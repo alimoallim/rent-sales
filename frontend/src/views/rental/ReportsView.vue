@@ -1,0 +1,272 @@
+<template>
+  <section>
+    <PageHeader title="Reports" subtitle="Balances, payments, charges, and income statement.">
+      <template #actions>
+        <button
+          v-if="reportType !== 'income-statement'"
+          type="button"
+          class="btn-secondary w-full sm:w-auto"
+          @click="exportCsv"
+        >
+          Export CSV
+        </button>
+        <button type="button" class="btn-secondary w-full sm:w-auto" @click="printReport">
+          Print
+        </button>
+      </template>
+    </PageHeader>
+
+    <div class="filter-bar">
+      <select v-model="reportType" class="input-field" @change="load">
+        <option value="tenant-balances">Tenant balances</option>
+        <option value="payment-history">Payment history</option>
+        <option value="charge-summary">Charge summary</option>
+        <option value="income-statement">Income statement</option>
+      </select>
+
+      <select v-model="filters.building_id" class="input-field" @change="load">
+        <option value="">All buildings</option>
+        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
+      </select>
+
+      <template v-if="reportType === 'payment-history'">
+        <input v-model="filters.from" type="date" class="input-field" @change="load" />
+        <input v-model="filters.to" type="date" class="input-field" @change="load" />
+        <label class="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+          <input v-model="filters.include_voided" type="checkbox" class="h-4 w-4" @change="load" />
+          Include voided
+        </label>
+      </template>
+
+      <template v-if="reportType === 'tenant-balances'">
+        <label class="flex min-h-11 items-center gap-2 text-sm text-slate-700">
+          <input v-model="filters.outstanding_only" type="checkbox" class="h-4 w-4" @change="load" />
+          Outstanding only
+        </label>
+      </template>
+
+      <template v-if="reportType === 'charge-summary' || reportType === 'income-statement'">
+        <select v-model="filters.billing_month" class="input-field" @change="load">
+          <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
+        </select>
+        <input v-model="filters.billing_year" type="number" min="2000" class="input-field w-full sm:w-28" @change="load" />
+      </template>
+
+      <template v-if="reportType === 'income-statement'">
+        <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-700">
+          <input v-model="filters.legacy_income_mode" type="checkbox" class="h-4 w-4" @change="load" />
+          Legacy calculation (match old system)
+        </label>
+      </template>
+    </div>
+
+    <p v-if="error" class="alert-error mb-3">{{ error }}</p>
+
+    <div id="print-area" class="content-panel">
+      <IncomeStatementReport
+        v-if="reportType === 'income-statement' && incomeStatement"
+        :statement="incomeStatement"
+        :building-name="selectedBuildingName"
+        @export="exportIncomeCsv"
+      />
+
+      <ResponsiveDataList
+        v-else
+        :items="tableRows"
+        :columns="tableColumns"
+        row-key="tenant_name"
+        empty-message="No data for selected filters."
+        :footer-label="tableTotals ? 'Totals' : ''"
+        :footer-value="tableTotals ? formatMoney(tableTotals) : ''"
+      >
+        <template #cell-paid_at="{ item }">{{ formatDate(item.paid_at) }}</template>
+      </ResponsiveDataList>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue'
+import PageHeader from '../../components/PageHeader.vue'
+import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import IncomeStatementReport from '../../components/rental/IncomeStatementReport.vue'
+import {
+  downloadReportCsv,
+  fetchBuildings,
+  fetchChargeSummaryReport,
+  fetchIncomeStatementReport,
+  fetchPaymentHistoryReport,
+  fetchTenantBalancesReport,
+} from '../../api/rental'
+
+const buildings = ref([])
+const reportType = ref('tenant-balances')
+const report = ref(null)
+const incomeStatement = ref(null)
+const error = ref('')
+const now = new Date()
+const filters = reactive({
+  building_id: '',
+  from: '',
+  to: '',
+  outstanding_only: true,
+  include_voided: false,
+  legacy_income_mode: false,
+  billing_month: now.getMonth() + 1,
+  billing_year: now.getFullYear(),
+})
+
+const months = [
+  { value: 1, label: 'January' }, { value: 2, label: 'February' }, { value: 3, label: 'March' },
+  { value: 4, label: 'April' }, { value: 5, label: 'May' }, { value: 6, label: 'June' },
+  { value: 7, label: 'July' }, { value: 8, label: 'August' }, { value: 9, label: 'September' },
+  { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
+]
+
+const columnSets = {
+  'tenant-balances': [
+    { key: 'tenant_name', label: 'Tenant', cardTitle: true },
+    { key: 'balance', label: 'Balance', align: 'right', money: true, mobileCard: true },
+    { key: 'building_name', label: 'Building', mobileCard: true },
+    { key: 'unit_label', label: 'Unit', tabletCard: true },
+    { key: 'monthly_rent', label: 'Rent', align: 'right', money: true, tabletCard: true },
+    { key: 'service_amount', label: 'Service', align: 'right', money: true, tabletCard: true },
+    { key: 'charge_count', label: 'Periods', align: 'right', tabletCard: true },
+    { key: 'charged_amount', label: 'Charged', align: 'right', money: true, tabletCard: true },
+    { key: 'paid_amount', label: 'Paid', align: 'right', money: true, tabletCard: true },
+  ],
+  'payment-history': [
+    { key: 'paid_at', label: 'Date', mobileCard: true },
+    { key: 'tenant_name', label: 'Tenant', cardTitle: true },
+    { key: 'amount', label: 'Amount', align: 'right', money: true, mobileCard: true },
+    { key: 'building_name', label: 'Building', tabletCard: true },
+    { key: 'invoice_reference', label: 'Invoice', tabletCard: true },
+    { key: 'discount', label: 'Discount', align: 'right', money: true, tabletCard: true },
+    { key: 'status', label: 'Status', mobileCard: true },
+  ],
+  'charge-summary': [
+    { key: 'tenant_name', label: 'Tenant', cardTitle: true },
+    { key: 'total_amount', label: 'Total', align: 'right', money: true, mobileCard: true },
+    { key: 'period', label: 'Period', mobileCard: true },
+    { key: 'building_name', label: 'Building', tabletCard: true },
+    { key: 'unit_label', label: 'Unit', tabletCard: true },
+    { key: 'rent_amount', label: 'Rent', align: 'right', money: true, tabletCard: true },
+    { key: 'service_amount', label: 'Service', align: 'right', money: true, tabletCard: true },
+  ],
+}
+
+const tableColumns = computed(() => columnSets[reportType.value] || [])
+const selectedBuildingName = computed(() => {
+  if (!filters.building_id) return 'All buildings'
+  return buildings.value.find((b) => String(b.id) === String(filters.building_id))?.name || 'Selected building'
+})
+const tableRows = computed(() => {
+  if (!report.value?.rows) return []
+  if (reportType.value === 'charge-summary') {
+    return report.value.rows.map((row) => ({
+      ...row,
+      period: `${row.billing_month}/${row.billing_year}`,
+    }))
+  }
+  return report.value.rows
+})
+
+const tableTotals = computed(() => {
+  if (!report.value?.totals) return null
+  if (reportType.value === 'tenant-balances') return report.value.totals.balance
+  if (reportType.value === 'payment-history') return report.value.totals.amount
+  if (reportType.value === 'charge-summary') return report.value.totals.total_amount
+  return null
+})
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('en-KE')
+}
+
+function buildParams() {
+  const params = {}
+  if (filters.building_id) params.building_id = filters.building_id
+  if (reportType.value === 'payment-history') {
+    if (filters.from) params.from = filters.from
+    if (filters.to) params.to = filters.to
+    if (filters.include_voided) params.include_voided = 1
+  }
+  if (reportType.value === 'tenant-balances' && filters.outstanding_only) {
+    params.outstanding_only = 1
+  }
+  if (reportType.value === 'charge-summary' || reportType.value === 'income-statement') {
+    params.billing_month = filters.billing_month
+    params.billing_year = filters.billing_year
+  }
+  if (reportType.value === 'income-statement' && filters.legacy_income_mode) {
+    params.mode = 'legacy'
+  }
+  return params
+}
+
+async function load() {
+  error.value = ''
+  incomeStatement.value = null
+  report.value = null
+
+  try {
+    if (reportType.value === 'income-statement') {
+      if (!filters.building_id) {
+        error.value = 'Select a building for the income statement.'
+        return
+      }
+      incomeStatement.value = await fetchIncomeStatementReport(buildParams())
+      return
+    }
+
+    if (reportType.value === 'tenant-balances') {
+      report.value = await fetchTenantBalancesReport(buildParams())
+    } else if (reportType.value === 'payment-history') {
+      report.value = await fetchPaymentHistoryReport(buildParams())
+    } else {
+      report.value = await fetchChargeSummaryReport(buildParams())
+    }
+  } catch (e) {
+    error.value = e.response?.data?.message || 'Could not load report.'
+  }
+}
+
+async function exportCsv() {
+  await downloadReportCsv(reportType.value, buildParams(), `${reportType.value}.csv`)
+}
+
+async function exportIncomeCsv() {
+  await downloadReportCsv('income-statement', buildParams(), 'income-statement.csv')
+}
+
+function printReport() {
+  window.print()
+}
+
+onMounted(async () => {
+  const response = await fetchBuildings()
+  buildings.value = response.data
+  await load()
+})
+</script>
+
+<style>
+@media print {
+  header,
+  nav,
+  button,
+  .filter-bar {
+    display: none !important;
+  }
+
+  #print-area.content-panel {
+    border: none !important;
+    box-shadow: none !important;
+  }
+}
+</style>
