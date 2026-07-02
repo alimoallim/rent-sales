@@ -65,7 +65,7 @@
             Approve all ready tenants
           </button>
           <button type="button" class="btn-secondary" :disabled="actionLoading" @click="refreshPending">
-            Refresh pending readings
+            Refresh amounts & readings
           </button>
         </div>
       </div>

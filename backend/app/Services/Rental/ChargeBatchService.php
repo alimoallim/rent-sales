@@ -27,12 +27,23 @@ class ChargeBatchService
 
     public function findForPeriod(int $buildingId, int $month, int $year): ?ChargeBatch
     {
-        return ChargeBatch::query()
+        $batch = ChargeBatch::query()
             ->with(['building', 'items.tenant.unit', 'items.approvedByUser', 'items.adjustedByUser'])
             ->where('rental_building_id', $buildingId)
             ->where('billing_month', $month)
             ->where('billing_year', $year)
             ->first();
+
+        if ($batch === null) {
+            return null;
+        }
+
+        if ($batch->isEditable()) {
+            $this->utilitySync->syncTenantsForBatch($batch);
+            $batch->load(['building', 'items.tenant.unit', 'items.approvedByUser', 'items.adjustedByUser']);
+        }
+
+        return $batch;
     }
 
     public function pendingBatchCount(): int
@@ -100,6 +111,7 @@ class ChargeBatchService
     {
         $this->assertEditable($batch);
 
+        $this->utilitySync->syncTenantsForBatch($batch);
         $this->utilitySync->refreshPendingItems($batch);
 
         return $batch->fresh(['building', 'items.tenant.unit', 'items.approvedByUser', 'items.adjustedByUser']);
@@ -186,7 +198,7 @@ class ChargeBatchService
     {
         $this->assertEditable($batch);
 
-        $this->utilitySync->refreshPendingItems($batch);
+        $batch = $this->refreshPendingItems($batch);
 
         $this->postingService->postTenantItems($batch, $tenantId, $user);
         $this->syncBatchStatus($batch, $user);
@@ -202,7 +214,7 @@ class ChargeBatchService
         $this->assertEditable($batch);
 
         return DB::transaction(function () use ($batch, $user): array {
-            $this->utilitySync->refreshPendingItems($batch);
+            $batch = $this->refreshPendingItems($batch);
 
             $tenantIds = $this->unresolvedTenantIds($batch);
             $approved = 0;
@@ -240,16 +252,22 @@ class ChargeBatchService
             ->groupBy('tenant_id')
             ->map(function (Collection $items): array {
                 $tenant = $items->first()->tenant;
-                $subtotal = $items
-                    ->filter(fn (ChargeBatchItem $item) => $item->amount !== null && $item->item_status !== ChargeBatchItemStatus::Excluded)
-                    ->sum(fn (ChargeBatchItem $item) => (float) $item->amount);
+                $subtotal = '0.00';
+
+                foreach ($items as $item) {
+                    if ($item->amount === null || $item->item_status === ChargeBatchItemStatus::Excluded) {
+                        continue;
+                    }
+
+                    $subtotal = bcadd($subtotal, (string) $item->amount, 2);
+                }
 
                 return [
                     'tenant_id' => $tenant->id,
                     'tenant_name' => $tenant->name,
                     'unit_label' => $tenant->unit?->house_number,
                     'tenant_status' => $this->tenantResolutionStatus($items),
-                    'subtotal' => number_format($subtotal, 2, '.', ''),
+                    'subtotal' => $subtotal,
                     'items' => $items->values(),
                 ];
             })

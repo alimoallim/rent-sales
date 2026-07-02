@@ -7,6 +7,7 @@ use App\Enums\ChargeBatchStatus;
 use App\Enums\RentalUnitStatus;
 use App\Enums\TenantStatus;
 use App\Models\ChargeBatch;
+use App\Models\ChargeBatchItem;
 use App\Models\RentalBuilding;
 use App\Models\RentalUnit;
 use App\Models\RentCharge;
@@ -373,6 +374,44 @@ class ChargeBatchTest extends TestCase
             'tenant_id' => $tenantId,
             'purpose' => 'Water',
             'total_amount' => 2700,
+        ]);
+    }
+
+    public function test_refresh_restores_missing_rent_and_service_lines_in_subtotal(): void
+    {
+        $data = $this->seedActiveTenant();
+
+        $response = $this->actingAs($data['user'])->postJson('/api/v1/rental/charge-batches/generate', [
+            'building_id' => $data['building']->id,
+            'billing_month' => 8,
+            'billing_year' => 2026,
+        ]);
+
+        $batchId = $response->json('data.id');
+
+        ChargeBatchItem::query()
+            ->where('charge_batch_id', $batchId)
+            ->whereIn('charge_type', ['rent', 'service'])
+            ->delete();
+
+        $this->actingAs($data['user'])->postJson("/api/v1/rental/charge-batches/{$batchId}/refresh-pending")
+            ->assertOk()
+            ->assertJsonPath('data.tenant_groups.0.subtotal', '75000.00');
+
+        $this->assertDatabaseHas('charge_batch_items', [
+            'charge_batch_id' => $batchId,
+            'tenant_id' => $data['tenant']->id,
+            'charge_type' => 'rent',
+            'amount' => 65000,
+            'item_status' => ChargeBatchItemStatus::Draft->value,
+        ]);
+
+        $this->assertDatabaseHas('charge_batch_items', [
+            'charge_batch_id' => $batchId,
+            'tenant_id' => $data['tenant']->id,
+            'charge_type' => 'service',
+            'amount' => 10000,
+            'item_status' => ChargeBatchItemStatus::Draft->value,
         ]);
     }
 }
