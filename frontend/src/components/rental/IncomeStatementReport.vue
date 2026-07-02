@@ -1,11 +1,11 @@
 <template>
   <article class="income-statement mx-auto max-w-3xl">
     <header class="border-b-2 border-zinc-900 px-5 py-6 text-center sm:px-8">
-      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">Rental income statement</p>
-      <h2 class="mt-2 text-xl font-semibold tracking-tight text-zinc-900 sm:text-2xl">
+      <p class="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500 dark:text-zinc-400">Rental income statement</p>
+      <h2 class="mt-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-2xl">
         {{ buildingName }}
       </h2>
-      <p class="mt-1 text-sm text-zinc-600">For the month of {{ statement.period_label }}</p>
+      <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">For the month of {{ statement.period_label }}</p>
       <p v-if="statement.calculation_mode === 'legacy'" class="mt-3 inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
         Legacy calculation mode
       </p>
@@ -14,39 +14,39 @@
     <div class="overflow-x-auto">
       <table class="min-w-full text-sm">
         <thead>
-          <tr class="border-b border-zinc-200 bg-zinc-50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
+          <tr class="border-b border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             <th class="px-5 py-3 sm:px-8">Description</th>
-            <th class="px-5 py-3 text-right sm:px-8">Amount (KES)</th>
+            <th class="px-5 py-3 text-right sm:px-8">{{ amountLabel('rental') }}</th>
           </tr>
         </thead>
         <tbody>
           <template v-for="section in sections" :key="section.id">
-            <tr class="bg-zinc-100/80">
-              <td colspan="2" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-zinc-700 sm:px-8">
+            <tr class="bg-zinc-100 dark:bg-zinc-800/80">
+              <td colspan="2" class="px-5 py-2.5 text-xs font-bold uppercase tracking-wide text-zinc-700 dark:text-zinc-300 sm:px-8">
                 {{ section.title }}
               </td>
             </tr>
             <tr
               v-for="line in section.items"
               :key="`${section.id}-${line.key}`"
-              class="border-b border-zinc-100"
+              class="border-b border-zinc-100 dark:border-zinc-800"
             >
-              <td class="px-5 py-2.5 sm:px-8" :class="line.type === 'deduction' ? 'pl-8 text-zinc-600 sm:pl-12' : 'pl-8 text-zinc-800 sm:pl-12'">
+              <td class="px-5 py-2.5 sm:px-8" :class="line.type === 'deduction' ? 'pl-8 text-zinc-600 dark:text-zinc-400 sm:pl-12' : 'pl-8 text-zinc-800 dark:text-zinc-200 sm:pl-12'">
                 {{ line.label }}
               </td>
               <td
                 class="px-5 py-2.5 text-right tabular-nums sm:px-8"
-                :class="line.type === 'deduction' ? 'text-zinc-600' : 'text-zinc-900'"
+                :class="line.type === 'deduction' ? 'text-zinc-600' : 'text-zinc-900 dark:text-zinc-100'"
               >
                 {{ formatLineAmount(statement.lines[line.key], line.type) }}
               </td>
             </tr>
-            <tr class="border-b-2 border-zinc-200 bg-zinc-50/60">
-              <td class="px-5 py-3 pl-8 font-semibold text-zinc-900 sm:px-8 sm:pl-12">
+            <tr class="border-b-2 border-zinc-200 bg-zinc-50 dark:bg-zinc-900/60">
+              <td class="px-5 py-3 pl-8 font-semibold text-zinc-900 dark:text-zinc-100 sm:px-8 sm:pl-12">
                 {{ section.subtotal.label }}
               </td>
-              <td class="px-5 py-3 text-right font-semibold tabular-nums text-zinc-900 sm:px-8">
-                {{ formatMoney(statement.lines[section.subtotal.key]) }}
+              <td class="px-5 py-3 text-right font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 sm:px-8">
+                {{ formatMoney(statement.lines[section.subtotal.key], 'rental') }}
               </td>
             </tr>
           </template>
@@ -54,32 +54,32 @@
       </table>
     </div>
 
-    <section class="border-t-2 border-zinc-900 bg-zinc-50 px-5 py-5 sm:px-8">
-      <p class="text-xs font-bold uppercase tracking-wide text-zinc-500">Summary</p>
+    <section class="border-t-2 border-zinc-900 bg-zinc-50 dark:bg-zinc-900/50 px-5 py-5 sm:px-8">
+      <p class="text-xs font-bold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Summary</p>
       <dl class="mt-3 space-y-2">
-        <div class="flex items-baseline justify-between gap-4 text-sm text-zinc-700">
+        <div class="flex items-baseline justify-between gap-4 text-sm text-zinc-700 dark:text-zinc-300">
           <dt>Net rent income</dt>
-          <dd class="font-medium tabular-nums text-zinc-900">{{ formatMoney(statement.lines.rent_net) }}</dd>
+          <dd class="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{{ formatMoney(statement.lines.rent_net, 'rental') }}</dd>
         </div>
-        <div class="flex items-baseline justify-between gap-4 text-sm text-zinc-700">
+        <div class="flex items-baseline justify-between gap-4 text-sm text-zinc-700 dark:text-zinc-300">
           <dt>Service + water net</dt>
-          <dd class="font-medium tabular-nums text-zinc-900">{{ formatMoney(statement.lines.service_water_net) }}</dd>
+          <dd class="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{{ formatMoney(statement.lines.service_water_net, 'rental') }}</dd>
         </div>
         <div class="flex items-baseline justify-between gap-4 border-t border-zinc-300 pt-3">
-          <dt class="text-base font-semibold text-zinc-900">Net balance in hand</dt>
-          <dd class="text-lg font-bold tabular-nums text-zinc-900">
-            {{ formatMoney(statement.lines.net_balance_in_hand) }}
+          <dt class="text-base font-semibold text-zinc-900 dark:text-zinc-100">Net balance in hand</dt>
+          <dd class="text-lg font-bold tabular-nums text-zinc-900 dark:text-zinc-100">
+            {{ formatMoney(statement.lines.net_balance_in_hand, 'rental') }}
           </dd>
         </div>
       </dl>
     </section>
 
-    <footer class="flex flex-col gap-3 border-t border-zinc-200 px-5 py-4 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 print:py-6">
+    <footer class="flex flex-col gap-3 border-t border-zinc-200 dark:border-zinc-700 px-5 py-4 text-xs text-zinc-500 dark:text-zinc-400 sm:flex-row sm:items-center sm:justify-between sm:px-8 print:py-6">
       <p>Generated {{ generatedLabel }}</p>
-      <p class="text-zinc-400">All amounts in Kenyan Shillings (KES)</p>
+      <p class="text-zinc-400">All amounts in {{ currencyCode('rental') }}</p>
     </footer>
 
-    <div v-if="showActions" class="flex flex-wrap gap-2 border-t border-zinc-200 px-5 py-4 print:hidden sm:px-8">
+    <div v-if="showActions" class="flex flex-wrap gap-2 border-t border-zinc-200 dark:border-zinc-700 px-5 py-4 print:hidden sm:px-8">
       <button type="button" class="btn-secondary" @click="$emit('export')">
         Export CSV
       </button>
@@ -89,6 +89,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatMoney, amountLabel, moneyLabel, currencyCode } from '../../utils/money'
 
 const props = defineProps({
   statement: { type: Object, required: true },
@@ -148,13 +149,10 @@ const generatedLabel = computed(() => {
   })
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
-}
 
 function formatLineAmount(value, type) {
   const amount = Number(value || 0)
-  const formatted = formatMoney(Math.abs(amount))
+  const formatted = formatMoney(Math.abs(amount), 'rental')
   if (type === 'deduction' && amount !== 0) return `(${formatted})`
   return formatted
 }

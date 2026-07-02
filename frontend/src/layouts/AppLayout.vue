@@ -8,8 +8,11 @@
       :module-label="sidebarModuleLabel"
       :user-name="auth.user?.name ?? ''"
       :user-role="auth.role ?? ''"
+      :show-module-switcher="auth.isAdmin"
+      :current-module="navModule"
       @navigate="sidebarOpen = false"
       @close="sidebarOpen = false"
+      @switch-module="onSwitchModule"
     />
 
     <div class="app-shell-main">
@@ -99,7 +102,12 @@ async function logout() {
 
 async function switchModule(module) {
   auth.setPreferredModule(module)
+  sidebarOpen.value = false
   await router.push(module === 'sales' ? '/sales' : '/rental')
+}
+
+async function onSwitchModule(module) {
+  await switchModule(module)
 }
 
 async function loadChargeBatchBadge() {

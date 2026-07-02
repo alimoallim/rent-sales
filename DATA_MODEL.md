@@ -4,7 +4,8 @@
 **Status:** Step 2 — awaiting review (migrations created; **do not run `migrate` until approved**)  
 **Prerequisites:** `REQUIREMENTS.md`, `ARCHITECTURE.md`  
 **Database:** PostgreSQL 16+  
-**Money type:** `decimal(14,2)` — KES, half-up rounding to 2 dp  
+**Money type:** `decimal(14,2)` — amounts stored with 2 decimal places  
+**Currencies:** Rental module = **KES** (implicit in v1); Sales module = **USD** (`currency_code` on sales monetary tables, CHECK `currency_code = 'USD'`)  
 **Billing periods:** `billing_month` (1–12) + `billing_year` (4-digit int)
 
 ---
@@ -17,6 +18,7 @@
 | Legacy mapping | `legacy_id` nullable unique column on domain tables for Step 5 ETL |
 | Actor attribution | `created_by` / `updated_by` → `users.id` on financial rows |
 | Void / cancel | Status columns — no shadow delete tables |
+| Module currencies | Rental ledger KES; sales ledger USD (`config/money.php`) — no cross-module conversion |
 | File blobs | `documents` polymorphic table — not in entity rows |
 | Tenant retirement | `status = inactive` + `tenant_move_outs` log — no hard delete in API |
 | Client retirement | `status = disabled` — apartment freed, payments block delete |

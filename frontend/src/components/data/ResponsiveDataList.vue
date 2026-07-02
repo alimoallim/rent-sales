@@ -6,8 +6,9 @@
         v-for="(item, index) in items"
         :key="rowKeyValue(item, index)"
         class="card-surface p-3 transition-all duration-200"
+        :class="resolveRowClass(item)"
       >
-        <p v-if="titleColumn" class="text-sm font-semibold tracking-tight text-zinc-900">
+        <p v-if="titleColumn" class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
           <slot :name="`card-title-${titleColumn.key}`" :item="item">
             {{ formatValue(item, titleColumn) }}
           </slot>
@@ -17,11 +18,11 @@
           <div
             v-for="col in mobileCardColumns"
             :key="col.key"
-            class="flex justify-between gap-3 border-b border-zinc-100 py-1 last:border-0"
+            class="flex justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 py-1 last:border-0"
           >
-            <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{ col.label }}</dt>
+            <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ col.label }}</dt>
             <dd
-              class="text-right text-sm font-medium text-zinc-900"
+              class="text-right text-sm font-medium text-zinc-900 dark:text-zinc-100"
               :class="col.align === 'right' || col.money ? 'tabular-nums' : ''"
             >
               <slot :name="`cell-${col.key}`" :item="item" :column="col">
@@ -35,11 +36,11 @@
           <div
             v-for="col in tabletCardColumns"
             :key="col.key"
-            class="flex justify-between gap-3 border-b border-zinc-100 py-1 last:border-0"
+            class="flex justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800 py-1 last:border-0"
           >
-            <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500">{{ col.label }}</dt>
+            <dt class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{{ col.label }}</dt>
             <dd
-              class="text-right text-sm font-medium text-zinc-900"
+              class="text-right text-sm font-medium text-zinc-900 dark:text-zinc-100"
               :class="col.align === 'right' || col.money ? 'tabular-nums' : ''"
             >
               <slot :name="`cell-${col.key}`" :item="item" :column="col">
@@ -51,7 +52,7 @@
 
         <div
           v-if="$slots.actions"
-          class="mt-2 flex flex-col gap-1.5 border-t border-zinc-200 pt-2 sm:flex-row sm:flex-wrap"
+          class="mt-2 flex flex-col gap-1.5 border-t border-zinc-200 dark:border-zinc-700 pt-2 sm:flex-row sm:flex-wrap"
         >
           <slot name="actions" :item="item" />
         </div>
@@ -63,7 +64,7 @@
 
       <div
         v-if="footerLabel && items.length"
-        class="card-surface flex justify-between px-3 py-2 text-sm font-semibold text-zinc-900"
+        class="card-surface flex justify-between px-3 py-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100"
       >
         <span>{{ footerLabel }}</span>
         <span class="tabular-nums">{{ footerValue }}</span>
@@ -73,34 +74,35 @@
     <!-- Desktop: ERP data grid -->
     <div class="table-shell hidden lg:block">
       <table class="min-w-full text-sm">
-        <thead class="border-b border-zinc-200 bg-zinc-50 text-left">
+        <thead class="border-b border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 text-left">
           <tr>
             <th
               v-for="col in columns"
               :key="col.key"
-              class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500"
+              class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
               :class="col.align === 'right' ? 'text-right' : ''"
             >
               {{ col.label }}
             </th>
-            <th v-if="$slots.actions" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <th v-if="$slots.actions" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Actions
             </th>
           </tr>
         </thead>
-        <tbody class="divide-y divide-zinc-100">
+        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
           <tr
             v-for="(item, index) in items"
             :key="rowKeyValue(item, index)"
-            class="transition-colors duration-200 hover:bg-zinc-50"
+            class="transition-colors duration-200"
+            :class="resolveRowClass(item) || 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'"
           >
             <td
               v-for="col in columns"
               :key="col.key"
-              class="px-3 py-2 text-sm text-zinc-700"
+              class="px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300"
               :class="[
                 col.align === 'right' ? 'text-right tabular-nums' : '',
-                col.key === titleColumn?.key ? 'font-medium text-zinc-900' : '',
+                col.key === titleColumn?.key ? 'font-medium text-zinc-900 dark:text-zinc-100' : '',
               ]"
             >
               <slot :name="`cell-${col.key}`" :item="item" :column="col">
@@ -120,7 +122,7 @@
             </td>
           </tr>
         </tbody>
-        <tfoot v-if="footerLabel && items.length" class="border-t border-zinc-200 bg-zinc-50 font-semibold text-zinc-900">
+        <tfoot v-if="footerLabel && items.length" class="border-t border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 font-semibold text-zinc-900 dark:text-zinc-100">
           <tr>
             <td :colspan="Math.max(columns.length - 1 + ($slots.actions ? 1 : 0), 1)" class="px-3 py-2 text-sm">
               {{ footerLabel }}
@@ -135,6 +137,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatMoney as formatModuleMoney } from '../../utils/money'
 
 const props = defineProps({
   items: { type: Array, default: () => [] },
@@ -143,6 +146,8 @@ const props = defineProps({
   emptyMessage: { type: String, default: 'No records found.' },
   footerLabel: { type: String, default: '' },
   footerValue: { type: [String, Number], default: '' },
+  moneyModule: { type: String, default: 'rental' },
+  rowClass: { type: Function, default: null },
 })
 
 const titleColumn = computed(() => props.columns.find((col) => col.cardTitle))
@@ -159,6 +164,10 @@ function rowKeyValue(item, index) {
   return item?.[props.rowKey] ?? index
 }
 
+function resolveRowClass(item) {
+  return props.rowClass ? props.rowClass(item) : ''
+}
+
 function formatValue(item, col) {
   if (col.format) return col.format(item)
   const value = item[col.key]
@@ -168,9 +177,6 @@ function formatValue(item, col) {
 }
 
 function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))
+  return formatModuleMoney(value, props.moneyModule)
 }
 </script>

@@ -1,13 +1,13 @@
 <?php
 
-use Illuminate\Support\Facades\File;
+use App\Support\Spa;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/{any?}', function () {
-    $spa = public_path('index.html');
+    $spa = Spa::indexPath();
 
-    if (! File::exists($spa)) {
-        abort(503, 'Frontend build missing. Run npm run build and copy dist/ into public/.');
+    if ($spa === null) {
+        abort(503, 'Frontend build missing. Copy index.html to public_html/app/ or set SPA_INDEX_PATH in .env.');
     }
 
     return response()->file($spa);

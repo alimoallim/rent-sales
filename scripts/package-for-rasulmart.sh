@@ -29,8 +29,18 @@ echo "==> Preparing deploy/output..."
 rm -rf "$OUT"
 mkdir -p "$OUT/public_html/rent-sales"
 
+echo "==> Installing PHP dependencies (production)..."
+cd "$ROOT/backend"
+composer install --no-dev --optimize-autoloader --no-interaction
+
 echo "==> Copying Laravel backend to public_html/rent-sales/..."
-rsync -a --exclude='node_modules' --exclude='.git' --exclude='tests' --exclude='storage/logs/*' \
+rsync -a \
+  --exclude='node_modules' \
+  --exclude='.git' \
+  --exclude='tests' \
+  --exclude='.env' \
+  --exclude='.phpunit.result.cache' \
+  --exclude='storage/logs/*' \
   "$ROOT/backend/" "$OUT/public_html/rent-sales/"
 
 echo "==> Copying SPA into rent-sales/public/..."
@@ -39,6 +49,10 @@ cp -r "$ROOT/frontend/dist/"* "$OUT/public_html/rent-sales/public/"
 if [[ "$MODE" == "app" ]]; then
   cp "$ROOT/deploy/rasulmart/rent-sales-root.htaccess" "$OUT/public_html/rent-sales/.htaccess"
 fi
+
+echo "==> Restoring local dev PHP dependencies..."
+cd "$ROOT/backend"
+composer install --no-interaction --quiet
 
 cat > "$OUT/public_html/rent-sales/.env.example.production" <<'EOF'
 APP_NAME="Rasul Mart Rent & Sales"

@@ -22,6 +22,7 @@ class ChargeBatchService
 {
     public function __construct(
         private readonly ChargeBatchPostingService $postingService,
+        private readonly ChargeBatchUtilitySyncService $utilitySync,
     ) {}
 
     public function findForPeriod(int $buildingId, int $month, int $year): ?ChargeBatch
@@ -37,7 +38,15 @@ class ChargeBatchService
     public function pendingBatchCount(): int
     {
         return ChargeBatch::query()
-            ->whereIn('status', [ChargeBatchStatus::Draft, ChargeBatchStatus::PartiallyApproved])
+            ->where(function ($query): void {
+                $query->where('status', ChargeBatchStatus::Draft)
+                    ->orWhereHas('items', function ($itemQuery): void {
+                        $itemQuery->whereIn('item_status', [
+                            ChargeBatchItemStatus::Draft,
+                            ChargeBatchItemStatus::Pending,
+                        ]);
+                    });
+            })
             ->count();
     }
 
@@ -91,21 +100,7 @@ class ChargeBatchService
     {
         $this->assertEditable($batch);
 
-        $batch->load(['items.tenant']);
-
-        foreach ($batch->items as $item) {
-            if ($item->item_status !== ChargeBatchItemStatus::Pending) {
-                continue;
-            }
-
-            if ($item->charge_type === ChargeBatchItemType::Water) {
-                $this->refreshWaterItem($item, $batch->billing_month, $batch->billing_year);
-            }
-
-            if ($item->charge_type === ChargeBatchItemType::Electricity) {
-                $this->refreshElectricityItem($item, $batch->billing_month, $batch->billing_year);
-            }
-        }
+        $this->utilitySync->refreshPendingItems($batch);
 
         return $batch->fresh(['building', 'items.tenant.unit', 'items.approvedByUser', 'items.adjustedByUser']);
     }
@@ -123,21 +118,17 @@ class ChargeBatchService
             abort(404);
         }
 
-        if ($item->item_status === ChargeBatchItemStatus::Approved) {
-            throw ValidationException::withMessages([
-                'amount' => ['Approved line items cannot be edited.'],
-            ]);
-        }
-
         if ($item->item_status === ChargeBatchItemStatus::Excluded) {
             throw ValidationException::withMessages([
                 'amount' => ['Excluded line items cannot be edited.'],
             ]);
         }
 
+        $wasApproved = $item->item_status === ChargeBatchItemStatus::Approved;
+
         $item->update([
             'amount' => $amount,
-            'item_status' => ChargeBatchItemStatus::Draft,
+            'item_status' => $wasApproved ? ChargeBatchItemStatus::Approved : ChargeBatchItemStatus::Draft,
             'pending_reason' => null,
             'manually_adjusted' => bccomp($amount, (string) ($item->source_amount ?? $amount), 2) !== 0,
             'adjusted_by' => $user->id,
@@ -145,7 +136,30 @@ class ChargeBatchService
             'adjustment_note' => $note,
         ]);
 
+        if ($wasApproved) {
+            $this->postingService->syncTenantPostedCharges($batch, $item->tenant_id);
+        }
+
         return $item->fresh(['tenant', 'approvedByUser', 'adjustedByUser']);
+    }
+
+    public function reopenTenant(ChargeBatch $batch, int $tenantId, User $user): ChargeBatch
+    {
+        $this->assertEditable($batch);
+
+        ChargeBatchItem::query()
+            ->where('charge_batch_id', $batch->id)
+            ->where('tenant_id', $tenantId)
+            ->where('item_status', ChargeBatchItemStatus::Approved)
+            ->update([
+                'item_status' => ChargeBatchItemStatus::Draft,
+                'approved_by' => null,
+                'approved_at' => null,
+            ]);
+
+        $this->syncBatchStatus($batch, $user);
+
+        return $batch->fresh(['building', 'items.tenant.unit', 'items.approvedByUser', 'items.adjustedByUser']);
     }
 
     public function excludeTenant(ChargeBatch $batch, int $tenantId, string $reason, User $user): ChargeBatch
@@ -172,6 +186,8 @@ class ChargeBatchService
     {
         $this->assertEditable($batch);
 
+        $this->utilitySync->refreshPendingItems($batch);
+
         $this->postingService->postTenantItems($batch, $tenantId, $user);
         $this->syncBatchStatus($batch, $user);
 
@@ -186,6 +202,8 @@ class ChargeBatchService
         $this->assertEditable($batch);
 
         return DB::transaction(function () use ($batch, $user): array {
+            $this->utilitySync->refreshPendingItems($batch);
+
             $tenantIds = $this->unresolvedTenantIds($batch);
             $approved = 0;
             $postedTotal = '0.00';
@@ -323,64 +341,9 @@ class ChargeBatchService
         ]);
     }
 
-    private function refreshWaterItem(ChargeBatchItem $item, int $month, int $year): void
-    {
-        $bill = TenantWaterBill::query()
-            ->where('tenant_id', $item->tenant_id)
-            ->where('billing_month', $month)
-            ->where('billing_year', $year)
-            ->first();
-
-        if ($bill === null) {
-            return;
-        }
-
-        $item->update([
-            'amount' => $bill->amount,
-            'source_amount' => $bill->amount,
-            'item_status' => ChargeBatchItemStatus::Draft,
-            'pending_reason' => null,
-            'tenant_water_bill_id' => $bill->id,
-        ]);
-    }
-
-    private function refreshElectricityItem(ChargeBatchItem $item, int $month, int $year): void
-    {
-        $bill = TenantElectricityBill::query()
-            ->where('tenant_id', $item->tenant_id)
-            ->where('billing_month', $month)
-            ->where('billing_year', $year)
-            ->first();
-
-        if ($bill === null) {
-            return;
-        }
-
-        $item->update([
-            'amount' => $bill->amount,
-            'source_amount' => $bill->amount,
-            'item_status' => ChargeBatchItemStatus::Draft,
-            'pending_reason' => null,
-            'tenant_electricity_bill_id' => $bill->id,
-        ]);
-    }
-
     private function syncBatchStatus(ChargeBatch $batch, User $user): void
     {
         $batch->refresh();
-        $tenantIds = $batch->items->pluck('tenant_id')->unique();
-
-        $allResolved = $tenantIds->every(fn (int $tenantId) => $this->isTenantResolved($batch->id, $tenantId));
-
-        if ($allResolved) {
-            $batch->update([
-                'status' => ChargeBatchStatus::Locked,
-                'locked_by' => $user->id,
-                'locked_at' => now(),
-            ]);
-
-            return;
-        }
 
         $hasApproved = ChargeBatchItem::query()
             ->where('charge_batch_id', $batch->id)
@@ -389,6 +352,8 @@ class ChargeBatchService
 
         $batch->update([
             'status' => $hasApproved ? ChargeBatchStatus::PartiallyApproved : ChargeBatchStatus::Draft,
+            'locked_by' => null,
+            'locked_at' => null,
         ]);
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,6 +15,7 @@ class TenantPaymentSummaryResource extends JsonResource
     public function toArray(Request $request): array
     {
         return [
+            'currency_code' => $this->resource['currency_code'] ?? MoneyConfig::rentalCurrency(),
             'water_owed' => $this->resource['water_owed'],
             'electricity_owed' => $this->resource['electricity_owed'],
             'services_owed' => $this->resource['services_owed'],

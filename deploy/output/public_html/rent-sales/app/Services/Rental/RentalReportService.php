@@ -13,6 +13,7 @@ use App\Models\RentalExpense;
 use App\Models\ShareholderBill;
 use App\Models\Tenant;
 use App\Models\TenantWaterBill;
+use App\Support\MoneyConfig;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -77,6 +78,7 @@ class RentalReportService
 
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'filters' => [
                 'building_id' => $buildingId,
                 'outstanding_only' => $outstandingOnly,
@@ -114,6 +116,7 @@ class RentalReportService
 
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'filters' => compact('buildingId', 'tenantId', 'from', 'to', 'includeVoided'),
             'rows' => $rows,
             'totals' => $this->summarizePayments($payments),
@@ -167,6 +170,7 @@ class RentalReportService
 
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'filters' => compact('buildingId', 'tenantId', 'billingMonth', 'billingYear'),
             'rows' => $rows,
             'totals' => [
@@ -215,6 +219,7 @@ class RentalReportService
 
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'building_id' => $buildingId,
             'billing_month' => $billingMonth,
             'billing_year' => $billingYear,

@@ -121,7 +121,7 @@ class ChargeIntegrityTest extends TestCase
         $batchId = (int) $response->json('data.id');
 
         $this->actingAs($user)->postJson("/api/v1/rental/charge-batches/{$batchId}/approve-all")->assertOk();
-        $this->actingAs($user)->postJson("/api/v1/rental/charge-batches/{$batchId}/approve-all")->assertForbidden();
+        $this->actingAs($user)->postJson("/api/v1/rental/charge-batches/{$batchId}/approve-all")->assertOk();
 
         $this->assertDatabaseCount('rent_charges', 1);
 

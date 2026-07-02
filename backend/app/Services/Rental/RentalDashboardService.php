@@ -3,20 +3,17 @@
 namespace App\Services\Rental;
 
 use App\Enums\ChargeBatchStatus;
-use App\Enums\ElectricityBillStatus;
 use App\Enums\RentPaymentStatus;
 use App\Enums\RentalUnitStatus;
 use App\Enums\TenantStatus;
-use App\Enums\WaterBillStatus;
 use App\Models\ChargeBatch;
 use App\Models\RentalBuilding;
 use App\Models\RentalUnit;
 use App\Models\RentCharge;
 use App\Models\RentPayment;
 use App\Models\Tenant;
-use App\Models\TenantElectricityBill;
 use App\Models\TenantMoveOut;
-use App\Models\TenantWaterBill;
+use App\Support\MoneyConfig;
 use Illuminate\Support\Carbon;
 
 class RentalDashboardService
@@ -24,6 +21,8 @@ class RentalDashboardService
     public function __construct(
         private readonly TenantBalanceBreakdownService $breakdownService,
         private readonly RentalDashboardActionService $actionService,
+        private readonly ChargeBatchService $chargeBatchService,
+        private readonly TenantMeterReadingReminderService $meterReadingReminder,
     ) {}
 
     /**
@@ -47,6 +46,7 @@ class RentalDashboardService
 
         return [
             'generated_at' => $now->toISOString(),
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'period' => [
                 'month' => (int) $now->month,
                 'year' => (int) $now->year,
@@ -63,13 +63,11 @@ class RentalDashboardService
             'collections' => $collections,
             'outstanding' => $outstanding,
             'utilities' => [
-                'pending_water_bills' => $this->pendingUtilityBills(TenantWaterBill::class, WaterBillStatus::Pending),
-                'pending_electricity_bills' => $this->pendingUtilityBills(TenantElectricityBill::class, ElectricityBillStatus::Pending),
+                'missing_water_readings' => $this->missingUtilityReadings('water', $now),
+                'missing_electricity_readings' => $this->missingUtilityReadings('electricity', $now),
             ],
             'operations' => [
-                'pending_charge_batches' => ChargeBatch::query()
-                    ->whereIn('status', [ChargeBatchStatus::Draft, ChargeBatchStatus::PartiallyApproved])
-                    ->count(),
+                'pending_charge_batches' => $this->chargeBatchService->pendingBatchCount(),
                 'move_outs_last_30_days' => TenantMoveOut::query()
                     ->whereDate('moved_out_at', '>=', $now->copy()->subDays(30)->toDateString())
                     ->count(),
@@ -137,7 +135,9 @@ class RentalDashboardService
                 $totals['electricity_owed'] = bcadd($totals['electricity_owed'], $breakdown['electricity_owed'], 2);
             });
 
-        return $totals;
+        return array_merge($totals, [
+            'currency_code' => MoneyConfig::rentalCurrency(),
+        ]);
     }
 
     /**
@@ -181,15 +181,30 @@ class RentalDashboardService
     }
 
     /**
-     * @param  class-string  $modelClass
-     * @return array{count: int, amount: string}
+     * @return array{count: int}
      */
-    private function pendingUtilityBills(string $modelClass, WaterBillStatus|ElectricityBillStatus $status): array
+    private function missingUtilityReadings(string $utility, Carbon $now): array
     {
-        return [
-            'count' => $modelClass::query()->where('status', $status)->count(),
-            'amount' => (string) $modelClass::query()->where('status', $status)->sum('amount'),
-        ];
+        $count = 0;
+        $month = (int) $now->month;
+        $year = (int) $now->year;
+
+        Tenant::query()
+            ->where('status', TenantStatus::Active)
+            ->when(
+                $utility === 'water',
+                fn ($query) => $query->where('requires_water_metering', true),
+                fn ($query) => $query->where('requires_electricity_metering', true),
+            )
+            ->each(function (Tenant $tenant) use (&$count, $utility, $month, $year): void {
+                foreach ($this->meterReadingReminder->missingRequiredReadings($tenant, $month, $year) as $missing) {
+                    if ($missing['utility'] === $utility) {
+                        $count++;
+                    }
+                }
+            });
+
+        return ['count' => $count];
     }
 
     /**

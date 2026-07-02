@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,7 @@ class PayrollEntryResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'employee_id' => $this->employee_id,
             'employee_name' => $this->whenLoaded('employee', fn () => $this->employee->name),
             'rental_building_id' => $this->rental_building_id,

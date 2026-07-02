@@ -25,6 +25,7 @@ use App\Models\TenantMoveOut;
 use App\Models\TenantWaterBill;
 use App\Models\User;
 use App\Services\Rental\WaterBillService;
+use App\Support\MoneyConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -89,10 +90,15 @@ class LegacyImporter
         return $this->report;
     }
 
-    public function import(string $path, bool $dryRun = false, bool $fresh = false, bool $skipSales = false): LegacyImportReport
-    {
+    public function import(
+        string $path,
+        bool $dryRun = false,
+        bool $fresh = false,
+        bool $skipSales = false,
+        bool $skipUsers = false,
+    ): LegacyImportReport {
         $this->report = new LegacyImportReport;
-        $this->data = $this->parser->parseFile($path);
+        $this->data = $this->normalizeParsedData($this->parser->parseFile($path));
 
         if (! $dryRun && ! $fresh && RentalBuilding::query()->whereNotNull('legacy_id')->exists()) {
             throw new RuntimeException(
@@ -106,8 +112,12 @@ class LegacyImporter
 
         $this->indexWaterBillStatuses();
 
-        $callback = function () use ($dryRun, $skipSales): void {
-            $this->importUsers($dryRun);
+        $callback = function () use ($dryRun, $skipSales, $skipUsers): void {
+            if ($skipUsers) {
+                $this->mapExistingUsers($dryRun);
+            } else {
+                $this->importUsers($dryRun);
+            }
             $this->resolveFallbackUser();
             $this->importRentalBuildings($dryRun);
             $this->importRentalUnits($dryRun);
@@ -140,6 +150,53 @@ class LegacyImporter
         }
 
         return $this->report;
+    }
+
+    /**
+     * @param  array<string, list<array<string, mixed>>>  $data
+     * @return array<string, list<array<string, mixed>>>
+     */
+    private function normalizeParsedData(array $data): array
+    {
+        if (($data['water_bill_new'] ?? []) === [] && ($data['water_bill'] ?? []) !== []) {
+            $data['water_bill_new'] = array_map(
+                static fn (array $row): array => [
+                    'id' => $row['id'] ?? null,
+                    'status' => ($row['amount_paid'] ?? null) !== null && (float) $row['amount_paid'] > 0
+                        ? 'paid'
+                        : 'pending',
+                ],
+                $data['water_bill'],
+            );
+        }
+
+        return $data;
+    }
+
+    private function mapExistingUsers(bool $dryRun): void
+    {
+        foreach ($this->data['users'] ?? [] as $row) {
+            $legacyId = (int) $row['id'];
+            $username = strtolower((string) $row['username']);
+            $existing = User::query()
+                ->whereRaw('LOWER(username) = ?', [$username])
+                ->first();
+
+            if ($existing === null) {
+                $this->report->warn("Legacy user {$username} (id {$legacyId}) not found in greenfield; using fallback for attribution.");
+
+                continue;
+            }
+
+            $this->userIds[$legacyId] = $existing->id;
+            $this->userIdsByUsername[$username] = $existing->id;
+            $this->userIdsByName[strtolower($existing->name)] = $existing->id;
+            $this->report->increment('users_mapped');
+        }
+
+        if (! $dryRun && $this->userIds === []) {
+            throw new RuntimeException('No legacy users matched existing greenfield accounts. Import users or run without --skip-users.');
+        }
     }
 
     private function truncateDomainTables(): void
@@ -180,7 +237,7 @@ class LegacyImporter
             $status = strtolower((string) ($row['status'] ?? 'pending'));
             $this->waterBillStatusByLegacyId[$legacyId] = $status === 'paid'
                 ? WaterBillStatus::Paid->value
-                : WaterBillStatus::Pending->value;
+                : WaterBillStatus::Recorded->value;
         }
     }
 
@@ -197,7 +254,7 @@ class LegacyImporter
 
             $attributes = [
                 'name' => (string) $row['name'],
-                'password' => Hash::make((string) $row['password']),
+                'password' => $this->resolveLegacyPassword((string) $row['password']),
                 'role' => $role,
                 'status' => $status,
                 'is_manager' => $isManager,
@@ -225,11 +282,21 @@ class LegacyImporter
 
     private function mapUserRole(string $legacyType): UserRole
     {
-        return match (strtolower($legacyType)) {
-            'sales' => UserRole::Sales,
-            'admin', 'all' => UserRole::Admin,
+        return match (strtolower(trim($legacyType))) {
+            'sales', 'marketing' => UserRole::Sales,
+            'admin', 'all', '1' => UserRole::Admin,
+            '2', 'staff', 'rental' => UserRole::Rental,
             default => UserRole::Rental,
         };
+    }
+
+    private function resolveLegacyPassword(string $password): string
+    {
+        if (str_starts_with($password, '$2y$') || str_starts_with($password, '$2a$') || str_starts_with($password, '$2b$')) {
+            return $password;
+        }
+
+        return Hash::make($password);
     }
 
     private function resolveFallbackUser(): void
@@ -355,7 +422,7 @@ class LegacyImporter
                 'next_of_kin_phone' => $this->nullableString($row['nphone'] ?? null),
                 'start_date' => $this->nullableDate($row['starteddate'] ?? null),
                 'status' => $status,
-                'created_by' => $this->resolveUserId($row['username'] ?? null),
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ];
 
             if ($dryRun) {
@@ -411,7 +478,7 @@ class LegacyImporter
                 'refund_amount' => $this->money($row['refund'] ?? 0),
                 'reason' => (string) ($row['reason'] ?? ''),
                 'moved_out_at' => $this->nullableDate($row['action_date'] ?? null) ?? now()->toDateString(),
-                'recorded_by' => $this->resolveUserId($row['username'] ?? null),
+                'recorded_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
 
             $this->report->increment('tenant_move_outs');
@@ -540,7 +607,7 @@ class LegacyImporter
                 continue;
             }
 
-            $statusValue = $this->waterBillStatusByLegacyId[$legacyId] ?? WaterBillStatus::Pending->value;
+            $statusValue = $this->waterBillStatusByLegacyId[$legacyId] ?? WaterBillStatus::Recorded->value;
             $amount = $this->money($row['amount'] ?? 0);
 
             if ($dryRun) {
@@ -565,7 +632,7 @@ class LegacyImporter
                 'amount_paid' => $statusValue === WaterBillStatus::Paid->value ? $amount : null,
                 'status' => $statusValue,
                 'remark' => $this->nullableString($row['remark'] ?? null),
-                'created_by' => $this->resolveUserId($row['username'] ?? null),
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
 
             $this->waterBillIds[$legacyId] = $bill->id;
@@ -620,7 +687,7 @@ class LegacyImporter
                 'invoice_reference' => $this->nullableString($row['invoice'] ?? null),
                 'paid_at' => (string) $row['date_created'],
                 'status' => RentPaymentStatus::Active,
-                'created_by' => $this->resolveUserId($row['username'] ?? null),
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
 
             $this->report->increment('rent_payments');
@@ -706,7 +773,7 @@ class LegacyImporter
                     'amount' => (float) ($row['amount'] ?? 0),
                     'remarks' => $remark !== null ? [$remark] : [],
                     'billed_at' => $billedAt,
-                    'created_by' => $this->resolveUserId($row['username'] ?? null),
+                    'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
                     'source_ids' => [$legacyId],
                 ];
 
@@ -859,7 +926,7 @@ class LegacyImporter
                 'billing_year' => $period['year'],
                 'salary_amount' => $this->money($row['salary'] ?? 0),
                 'paid_at' => (string) ($row['date'] ?? now()),
-                'created_by' => $this->resolveUserId($row['username'] ?? null),
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
 
             $this->report->increment('payroll_entries');
@@ -967,6 +1034,7 @@ class LegacyImporter
 
             $id = DB::table('sale_units')->insertGetId([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'house_number' => (string) $row['house_no'],
                 'floor' => (string) $row['floor'],
@@ -1006,6 +1074,7 @@ class LegacyImporter
 
             $id = DB::table('clients')->insertGetId([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'sale_unit_id' => $unitId,
                 'name' => (string) $row['ClientName'],
@@ -1022,7 +1091,7 @@ class LegacyImporter
                 'next_of_kin_phone' => $this->nullableString($row['nphone'] ?? null),
                 'registration_date' => $this->nullableDate($row['starteddate'] ?? null),
                 'status' => $status,
-                'created_by' => $this->resolveUserId($row['createby'] ?? null),
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1062,6 +1131,7 @@ class LegacyImporter
 
             DB::table('sales_payments')->insert([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'client_id' => $clientId,
                 'sale_building_id' => $buildingId,
                 'amount' => $this->money($row['amount'] ?? 0),
@@ -1072,8 +1142,8 @@ class LegacyImporter
                 'paid_at' => (string) $row['date_created'],
                 'status' => $status,
                 'cancelled_at' => $status === 'cancelled' ? (string) $row['date_created'] : null,
-                'cancelled_by' => $status === 'cancelled' ? $this->resolveUserId($row['username'] ?? null) : null,
-                'created_by' => $this->resolveUserId($row['username'] ?? null),
+                'cancelled_by' => $status === 'cancelled' ? $this->resolveUserId($this->legacyUserReference($row)) : null,
+                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
@@ -1102,6 +1172,7 @@ class LegacyImporter
 
             DB::table('sales_expenses')->insert([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'name' => (string) $row['expensename'],
                 'amount' => $this->money($row['amountpaid'] ?? 0),
@@ -1113,6 +1184,11 @@ class LegacyImporter
 
             $this->report->increment('sales_expenses');
         }
+    }
+
+    private function legacyUserReference(array $row): mixed
+    {
+        return $row['username'] ?? $row['createby'] ?? null;
     }
 
     private function resolveUserId(mixed $reference): ?int

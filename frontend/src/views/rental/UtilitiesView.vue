@@ -31,10 +31,13 @@
           Electricity
         </button>
       </div>
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
     </div>
 
     <ResponsiveDataList :items="utilityBills" :columns="utilityColumns" empty-message="No utility bills found.">
@@ -50,10 +53,11 @@
       <div class="grid gap-4">
         <label class="label-field">
           Building
-          <select v-model="form.rental_building_id" class="input-field" required>
-            <option disabled value="">Select building</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="form.rental_building_id"
+            :buildings="buildings"
+            required
+          />
         </label>
         <label class="label-field">
           Month
@@ -66,7 +70,7 @@
           <input v-model="form.billing_year" type="number" min="2000" class="input-field" required />
         </label>
         <label class="label-field">
-          Amount (KES)
+          {{ amountLabel('rental') }}
           <input v-model="form.amount" type="number" min="0" step="0.01" class="input-field" required />
         </label>
         <label class="label-field">
@@ -91,6 +95,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import {
   createElectricityBill,
@@ -99,6 +104,7 @@ import {
   fetchElectricityBills,
   fetchNairobiWaterBills,
 } from '../../api/rental'
+import { amountLabel } from '../../utils/money'
 
 const buildings = ref([])
 const utilityBills = ref([])
@@ -131,9 +137,7 @@ const months = [
   { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ]
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
-}
+
 
 function formatDate(value) {
   if (!value) return '—'

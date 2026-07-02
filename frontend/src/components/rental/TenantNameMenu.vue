@@ -11,49 +11,51 @@
     </button>
     <div
       v-if="open"
-      class="absolute left-0 z-30 mt-1 min-w-[11rem] rounded-md border border-zinc-200 bg-white py-1 shadow-lg"
+      class="absolute left-0 z-30 mt-1 min-w-[12rem] rounded-md border border-zinc-200 bg-white dark:bg-zinc-900 py-1 shadow-lg"
       role="menu"
     >
-      <RouterLink
-        :to="paymentsTo"
-        class="block px-3 py-2 text-sm text-zinc-700 transition-colors duration-200 hover:bg-zinc-50"
+      <button
+        type="button"
+        class="block w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
         role="menuitem"
-        @click="close"
+        @click="openHistory('payments')"
       >
         Payment history
-      </RouterLink>
-      <RouterLink
-        :to="chargesTo"
-        class="block px-3 py-2 text-sm text-zinc-700 transition-colors duration-200 hover:bg-zinc-50"
+      </button>
+      <button
+        type="button"
+        class="block w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
         role="menuitem"
-        @click="close"
+        @click="openHistory('charges')"
       >
-        Charges
-      </RouterLink>
+        Charge history
+      </button>
     </div>
+
+    <TenantHistoryModal
+      v-model:open="historyOpen"
+      v-model:tab="historyTab"
+      :tenant-id="tenantId"
+      :tenant-name="tenantName"
+      :building-id="buildingId"
+    />
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
-import { tenantChargesRoute, tenantPaymentsRoute } from '../../utils/tenantRoutes'
+import { onMounted, onUnmounted, ref } from 'vue'
+import TenantHistoryModal from './TenantHistoryModal.vue'
 
-const props = defineProps({
+defineProps({
   tenantId: { type: [Number, String], required: true },
   tenantName: { type: String, required: true },
   buildingId: { type: [Number, String], default: null },
 })
 
 const open = ref(false)
+const historyOpen = ref(false)
+const historyTab = ref('payments')
 const root = ref(null)
-
-const paymentsTo = computed(() =>
-  tenantPaymentsRoute(props.tenantId, props.buildingId, props.tenantName),
-)
-
-const chargesTo = computed(() =>
-  tenantChargesRoute(props.tenantId, props.buildingId, props.tenantName),
-)
 
 function toggle() {
   open.value = !open.value
@@ -61,6 +63,12 @@ function toggle() {
 
 function close() {
   open.value = false
+}
+
+function openHistory(tab) {
+  historyTab.value = tab
+  historyOpen.value = true
+  close()
 }
 
 function onDocumentClick(event) {

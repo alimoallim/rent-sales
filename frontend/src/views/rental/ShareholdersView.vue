@@ -13,10 +13,13 @@
         <button type="button" class="segmented-option" :class="tab === 'shareholders' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('shareholders')">Shareholders</button>
         <button type="button" class="segmented-option" :class="tab === 'bills' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('bills')">Bills</button>
       </div>
-      <select v-if="tab === 'bills'" v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
     </div>
 
     <ResponsiveDataList
@@ -46,20 +49,22 @@
       <div v-if="tab === 'bills'" class="grid gap-4">
         <label class="label-field">
           Shareholder
-          <select v-model="billForm.shareholder_id" class="input-field" required>
-            <option disabled value="">Select shareholder</option>
-            <option v-for="shareholder in shareholders" :key="shareholder.id" :value="shareholder.id">{{ shareholder.name }}</option>
-          </select>
+          <ShareholderSearchSelect
+            v-model="billForm.shareholder_id"
+            :shareholders="shareholders"
+            required
+          />
         </label>
         <label class="label-field">
           Building
-          <select v-model="billForm.rental_building_id" class="input-field" required>
-            <option disabled value="">Select building</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="billForm.rental_building_id"
+            :buildings="buildings"
+            required
+          />
         </label>
         <label class="label-field">
-          Amount (KES)
+          {{ amountLabel('rental') }}
           <input v-model="billForm.amount" type="number" min="0" step="0.01" class="input-field" required />
         </label>
         <label class="label-field">
@@ -98,6 +103,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import ShareholderSearchSelect from '../../components/ui/ShareholderSearchSelect.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import {
   createShareholder,
@@ -109,6 +116,7 @@ import {
   fetchShareholders,
   updateShareholder,
 } from '../../api/rental'
+import { amountLabel } from '../../utils/money'
 
 const buildings = ref([])
 const shareholders = ref([])
@@ -146,9 +154,7 @@ const formTitle = computed(() => {
   return editingShareholder.value ? 'Edit shareholder' : 'Add shareholder'
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
-}
+
 
 async function loadBuildings() {
   buildings.value = (await fetchBuildings()).data

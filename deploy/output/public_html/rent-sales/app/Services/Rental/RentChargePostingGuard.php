@@ -90,4 +90,15 @@ class RentChargePostingGuard
 
         return $existing->fresh();
     }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updatePosted(RentCharge $existing, array $attributes): RentCharge
+    {
+        $existing->fill($attributes);
+        $existing->save();
+
+        return $existing->fresh();
+    }
 }

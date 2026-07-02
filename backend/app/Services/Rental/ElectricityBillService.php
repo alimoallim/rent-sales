@@ -11,6 +11,10 @@ class ElectricityBillService
 {
     public const CHARGE_PURPOSE = 'Electricity';
 
+    public function __construct(
+        private readonly ChargeBatchUtilitySyncService $utilitySync,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -38,13 +42,17 @@ class ElectricityBillService
         $amount = $data['amount'] ?? $calculated['amount'];
 
         return DB::transaction(function () use ($data, $userId, $calculated, $amount): TenantElectricityBill {
-            return TenantElectricityBill::query()->create([
+            $bill = TenantElectricityBill::query()->create([
                 ...$data,
                 'consumption' => $calculated['consumption'],
                 'amount' => $amount,
-                'status' => ElectricityBillStatus::Pending,
+                'status' => ElectricityBillStatus::Recorded,
                 'created_by' => $userId,
             ])->fresh(['tenant', 'building']);
+
+            $this->utilitySync->syncElectricityBill($bill);
+
+            return $bill;
         });
     }
 

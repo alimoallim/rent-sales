@@ -35,10 +35,6 @@ class RentChargeController extends Controller
     {
         $this->authorize('update', $rentCharge);
 
-        if ($rentCharge->charge_batch_item_id !== null) {
-            abort(422, 'Charges posted from a locked batch cannot be edited. Post a credit adjustment instead.');
-        }
-
         if ($rentCharge->purpose !== 'Rent + service') {
             abort(422, 'Only monthly rent and service charges can be edited here. Edit water or electricity bills from their respective screens.');
         }

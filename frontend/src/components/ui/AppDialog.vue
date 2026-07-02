@@ -15,14 +15,14 @@
       >
         <div v-if="$slots.header || title" class="mb-4 flex shrink-0 items-start justify-between gap-4">
           <div>
-            <h3 :id="titleId" class="text-sm font-semibold tracking-tight text-zinc-900">
+            <h3 :id="titleId" class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               <slot name="header">{{ title }}</slot>
             </h3>
-            <p v-if="subtitle" class="mt-0.5 text-xs text-zinc-500">{{ subtitle }}</p>
+            <p v-if="subtitle" class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{{ subtitle }}</p>
           </div>
           <button
             type="button"
-            class="touch-target -mr-1 rounded-md p-1.5 text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+            class="touch-target -mr-1 rounded-md p-1.5 text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover text-zinc-700 dark:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
             aria-label="Close"
             @click="close"
           >
@@ -38,7 +38,7 @@
 
         <div
           v-if="$slots.footer"
-          class="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-200 pt-3 sm:flex-row sm:justify-end"
+          class="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-200 dark:border-zinc-700 pt-3 sm:flex-row sm:justify-end"
         >
           <slot name="footer" />
         </div>

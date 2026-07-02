@@ -50,7 +50,7 @@
           </select>
         </label>
 
-        <label v-if="form.role === 'rental'" class="flex items-center gap-2 text-sm text-zinc-700">
+        <label v-if="form.role === 'rental'" class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
           <input v-model="form.is_manager" type="checkbox" class="rounded border-zinc-300" />
           Manager (can approve charge batches)
         </label>

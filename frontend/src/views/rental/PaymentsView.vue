@@ -6,19 +6,14 @@
       </template>
     </PageHeader>
 
-    <TenantFilterBanner
-      v-if="tenantFilter.id"
-      :tenant-id="tenantFilter.id"
-      :tenant-name="tenantFilter.name"
-      label="payments"
-      @clear="clearTenantFilter"
-    />
-
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <select v-model="filters.status" class="input-field" @change="load">
         <option value="">All statuses</option>
         <option value="active">Active</option>
@@ -76,34 +71,36 @@
     >
       <form id="payment-form" class="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-x-8" @submit.prevent="save">
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Payment details</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Payment details</p>
 
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="label-field sm:col-span-2">
               Building
-              <select v-model="form.rental_building_id" class="input-field" required @change="onBuildingChange">
-                <option disabled value="">Select building</option>
-                <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-              </select>
+              <BuildingSearchSelect
+                v-model="form.rental_building_id"
+                :buildings="buildings"
+                required
+                @change="onBuildingChange"
+              />
             </label>
 
             <label class="label-field sm:col-span-2">
               Tenant
-              <select v-model="form.tenant_id" class="input-field" required @change="onTenantChange">
-                <option disabled value="">Select tenant</option>
-                <option v-for="tenant in activeTenants" :key="tenant.id" :value="tenant.id">
-                  {{ tenant.name }} — {{ tenant.unit_label }}
-                </option>
-              </select>
+              <TenantSearchSelect
+                v-model="form.tenant_id"
+                :tenants="activeTenants"
+                required
+                @change="onTenantChange"
+              />
             </label>
 
             <label class="label-field">
-              Amount (KES)
+              {{ amountLabel('rental') }}
               <input v-model="form.amount" type="number" min="0.01" step="0.01" class="input-field" required />
             </label>
 
             <label class="label-field">
-              Discount (KES)
+              {{ moneyLabel('Discount', 'rental') }}
               <input v-model="form.discount" type="number" min="0" step="0.01" class="input-field" />
             </label>
 
@@ -120,7 +117,7 @@
         </div>
 
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Balance &amp; requirements</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Balance &amp; requirements</p>
 
           <BalanceBreakdown
             v-if="form.tenant_id"
@@ -130,17 +127,17 @@
           />
           <div
             v-else
-            class="rounded-md border border-dashed border-zinc-200 bg-zinc-50 px-3 py-4 text-sm text-zinc-500"
+            class="rounded-md border border-dashed border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-4 text-sm text-zinc-500 dark:text-zinc-400"
           >
             Select a tenant to view outstanding balance and metering requirements.
           </div>
 
           <div
             v-if="summary?.contract"
-            class="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm"
+            class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 p-3 text-sm"
           >
-            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-600">Agreement metering</p>
-            <ul class="mt-2 grid gap-1 text-zinc-700 sm:grid-cols-2">
+            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Agreement metering</p>
+            <ul class="mt-2 grid gap-1 text-zinc-700 dark:text-zinc-300 sm:grid-cols-2">
               <li>Water: {{ summary.contract.requires_water_metering ? 'Required monthly' : 'Not required' }}</li>
               <li>Electricity: {{ summary.contract.requires_electricity_metering ? 'Required monthly' : 'Not required' }}</li>
             </ul>
@@ -157,8 +154,8 @@
           >
             <p class="font-semibold">This payment is more than the tenant owes.</p>
             <p class="mt-1">
-              Total being recorded: KES {{ formatMoney(paymentTotal) }}.
-              Total due: KES {{ formatMoney(summary?.total_due || 0) }}.
+              Total being recorded: {{ formatMoney(paymentTotal, 'rental') }}.
+              Total due: {{ formatMoney(summary?.total_due || 0, 'rental') }}.
               The extra amount will be kept as a credit for future charges.
             </p>
             <p class="mt-2 font-medium">Only continue if you are recording this overpayment on purpose.</p>
@@ -185,15 +182,16 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import TenantSearchSelect from '../../components/ui/TenantSearchSelect.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import BalanceBreakdown from '../../components/rental/BalanceBreakdown.vue'
 import MeterReadingBanner from '../../components/rental/MeterReadingBanner.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
-import TenantFilterBanner from '../../components/rental/TenantFilterBanner.vue'
 import {
   createPayment,
   fetchBuildings,
@@ -203,9 +201,9 @@ import {
   updatePayment,
   voidPayment,
 } from '../../api/rental'
+import { formatMoney, amountLabel, moneyLabel } from '../../utils/money'
 
 const router = useRouter()
-const route = useRoute()
 
 const buildings = ref([])
 const payments = ref([])
@@ -215,8 +213,7 @@ const editing = ref(null)
 const error = ref('')
 const summary = ref(null)
 const summaryLoading = ref(false)
-const filters = reactive({ building_id: '', status: '', tenant_id: '' })
-const tenantFilter = reactive({ id: '', name: '' })
+const filters = reactive({ building_id: '', status: '' })
 const form = reactive({
   tenant_id: '',
   rental_building_id: '',
@@ -249,9 +246,7 @@ const wouldOverpay = computed(() => {
 
 const paymentBlocked = computed(() => Boolean(summary.value?.payment_blocked))
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
-}
+
 
 function formatDate(value) {
   if (!value) return '—'
@@ -301,38 +296,8 @@ async function load() {
   const params = {}
   if (filters.building_id) params.building_id = filters.building_id
   if (filters.status) params.status = filters.status
-  if (filters.tenant_id) params.tenant_id = filters.tenant_id
   const response = await fetchPayments(params)
   payments.value = response.data
-  if (tenantFilter.id && !tenantFilter.name && payments.value.length > 0) {
-    tenantFilter.name = payments.value[0].tenant_name || ''
-  }
-}
-
-function applyRouteQuery() {
-  const tenantId = route.query.tenant_id
-  if (!tenantId) {
-    filters.tenant_id = ''
-    tenantFilter.id = ''
-    tenantFilter.name = ''
-    return
-  }
-
-  filters.tenant_id = Number(tenantId)
-  tenantFilter.id = Number(tenantId)
-  tenantFilter.name = typeof route.query.tenant_name === 'string' ? route.query.tenant_name : ''
-
-  if (route.query.building_id) {
-    filters.building_id = Number(route.query.building_id)
-  }
-}
-
-function clearTenantFilter() {
-  filters.tenant_id = ''
-  tenantFilter.id = ''
-  tenantFilter.name = ''
-  router.replace({ name: 'rental.payments' })
-  load()
 }
 
 function onBuildingChange() {
@@ -420,7 +385,7 @@ async function save() {
 
   if (wouldOverpay.value) {
     const confirmed = window.confirm(
-      `This payment (KES ${formatMoney(paymentTotal.value)}) is more than the tenant owes (KES ${formatMoney(summary.value?.total_due || 0)}). `
+      `This payment (${formatMoney(paymentTotal.value, 'rental')}) is more than the tenant owes (${formatMoney(summary.value?.total_due || 0, 'rental')}). `
         + 'The extra will be kept as credit. Only continue if this overpayment is intentional.',
     )
     if (!confirmed) return
@@ -453,7 +418,7 @@ async function save() {
 }
 
 async function voidOne(payment) {
-  if (!window.confirm(`Void payment of KES ${formatMoney(payment.amount)} for ${payment.tenant_name}?`)) return
+  if (!window.confirm(`Void payment of ${formatMoney(payment.amount, 'rental')} for ${payment.tenant_name}?`)) return
 
   try {
     await voidPayment(payment.id)
@@ -481,15 +446,6 @@ watch(
 
 onMounted(async () => {
   await loadBuildings()
-  applyRouteQuery()
   await load()
 })
-
-watch(
-  () => route.query.tenant_id,
-  async () => {
-    applyRouteQuery()
-    await load()
-  },
-)
 </script>

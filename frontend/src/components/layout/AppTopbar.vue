@@ -13,9 +13,14 @@
       </button>
 
       <div class="app-topbar-context">
-        <nav class="app-topbar-breadcrumb" aria-label="Breadcrumb">
+        <p class="app-topbar-mobile-title">
+          <span class="app-topbar-module-chip">{{ moduleLabel }}</span>
+          <span class="app-topbar-mobile-page">{{ pageTitle }}</span>
+        </p>
+
+        <nav class="app-topbar-breadcrumb hidden md:flex" aria-label="Breadcrumb">
           <span class="app-topbar-breadcrumb-module">{{ moduleLabel }}</span>
-          <svg class="h-3.5 w-3.5 text-zinc-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <svg class="h-3.5 w-3.5 shrink-0 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
             <path stroke-linecap="round" d="m9 6 6 6-6 6" />
           </svg>
           <span class="app-topbar-breadcrumb-page">{{ pageTitle }}</span>
@@ -24,54 +29,57 @@
     </div>
 
     <div class="app-topbar-end">
-      <div
+      <ModuleSwitcher
         v-if="showModuleSwitcher"
-        class="segmented-control hidden sm:inline-flex"
-        role="group"
-        aria-label="Switch module"
-      >
-        <button
-          type="button"
-          class="segmented-option"
-          :class="{ 'segmented-option-active': currentModule === 'rental' }"
-          @click="$emit('switch-module', 'rental')"
-        >
-          Rental
-        </button>
-        <button
-          type="button"
-          class="segmented-option"
-          :class="{ 'segmented-option-active': currentModule === 'sales' }"
-          @click="$emit('switch-module', 'sales')"
-        >
-          Sales
-        </button>
-      </div>
+        class="md:hidden"
+        compact
+        :current-module="currentModule"
+        @switch="$emit('switch-module', $event)"
+      />
 
-      <div class="app-topbar-user">
+      <ModuleSwitcher
+        v-if="showModuleSwitcher"
+        class="hidden md:inline-flex"
+        :current-module="currentModule"
+        @switch="$emit('switch-module', $event)"
+      />
+
+      <ThemeToggle class="app-topbar-theme" />
+
+      <div class="app-topbar-user hidden md:flex">
         <span class="app-topbar-avatar" aria-hidden="true">{{ userInitials }}</span>
-        <div class="hidden min-w-0 md:block">
-          <p class="truncate text-sm font-medium text-zinc-900">{{ userName }}</p>
-          <p class="truncate text-[11px] text-zinc-500">{{ roleLabel }}</p>
+        <div class="min-w-0">
+          <p class="truncate text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ userName }}</p>
+          <p class="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{{ roleLabel }}</p>
         </div>
       </div>
 
       <button
         type="button"
-        class="app-topbar-signout"
+        class="app-topbar-signout hidden md:inline-flex"
         @click="$emit('logout')"
       >
         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path stroke-linecap="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9" />
         </svg>
-        <span class="hidden sm:inline">Sign out</span>
+        <span>Sign out</span>
       </button>
+
+      <AppTopbarMenu
+        class="md:hidden"
+        :user-name="userName"
+        :user-role="userRole"
+        @logout="$emit('logout')"
+      />
     </div>
   </header>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import ThemeToggle from '../ui/ThemeToggle.vue'
+import ModuleSwitcher from './ModuleSwitcher.vue'
+import AppTopbarMenu from './AppTopbarMenu.vue'
 
 const props = defineProps({
   pageTitle: { type: String, default: 'Dashboard' },

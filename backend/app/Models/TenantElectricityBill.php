@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtilityBillStatusCast;
 use App\Enums\ElectricityBillStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,7 +41,7 @@ class TenantElectricityBill extends Model
             'fixed_fee' => 'decimal:2',
             'amount' => 'decimal:2',
             'amount_paid' => 'decimal:2',
-            'status' => ElectricityBillStatus::class,
+            'status' => UtilityBillStatusCast::class.':'.ElectricityBillStatus::class,
         ];
     }
 

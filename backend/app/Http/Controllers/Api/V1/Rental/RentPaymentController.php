@@ -18,13 +18,15 @@ class RentPaymentController extends Controller
     {
         $this->authorize('viewAny', RentPayment::class);
 
+        $perPage = min(max($request->integer('per_page', 50), 1), 100);
+
         $payments = RentPayment::query()
             ->with(['tenant', 'building'])
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
             ->when($request->integer('tenant_id'), fn ($q, $id) => $q->where('tenant_id', $id))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
             ->orderByDesc('paid_at')
-            ->paginate(50);
+            ->paginate($perPage);
 
         return RentPaymentResource::collection($payments);
     }

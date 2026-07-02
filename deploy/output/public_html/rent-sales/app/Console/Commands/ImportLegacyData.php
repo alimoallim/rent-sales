@@ -11,9 +11,10 @@ class ImportLegacyData extends Command
     protected $signature = 'legacy:import
                             {file : Path to the legacy MySQL SQL dump}
                             {--dry-run : Parse and validate without writing to the database}
-                            {--fresh : Truncate domain tables before import (keeps users)}
+                            {--fresh : Truncate domain tables before import (keeps users unless replaced)}
                             {--force : Skip confirmation when using --fresh}
-                            {--skip-sales : Import rental domain only}';
+                            {--skip-sales : Import rental domain only}
+                            {--skip-users : Keep existing greenfield users; map legacy user ids by username}';
 
     protected $description = 'Import legacy MySQL dump data into the PostgreSQL schema';
 
@@ -23,6 +24,7 @@ class ImportLegacyData extends Command
         $dryRun = (bool) $this->option('dry-run');
         $fresh = (bool) $this->option('fresh');
         $skipSales = (bool) $this->option('skip-sales');
+        $skipUsers = (bool) $this->option('skip-users');
 
         if (! is_readable($path)) {
             $this->error("File not readable: {$path}");
@@ -43,7 +45,7 @@ class ImportLegacyData extends Command
         $this->info($dryRun ? 'Dry-run: validating legacy dump...' : 'Importing legacy dump...');
 
         try {
-            $report = $importer->import($path, $dryRun, $fresh, $skipSales);
+            $report = $importer->import($path, $dryRun, $fresh, $skipSales, $skipUsers);
         } catch (Throwable $exception) {
             $this->error($exception->getMessage());
 

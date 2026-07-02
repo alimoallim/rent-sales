@@ -10,10 +10,13 @@
     </PageHeader>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <div class="segmented-control">
         <button
           type="button"
@@ -59,7 +62,7 @@
           <span v-if="item.requires_electricity_metering" class="badge badge-accent">Electricity</span>
           <span
             v-if="!item.requires_water_metering && !item.requires_electricity_metering"
-            class="text-xs text-zinc-500"
+            class="text-xs text-zinc-500 dark:text-zinc-400"
           >
             No metering
           </span>
@@ -70,7 +73,7 @@
           class="font-medium tabular-nums"
           :class="Number(item.balance) > 0 ? 'text-amber-700' : 'text-emerald-700'"
         >
-          {{ formatMoney(item.balance) }}
+          {{ formatMoney(item.balance, 'rental') }}
         </span>
       </template>
       <template v-if="status === 'active'" #actions="{ item }">
@@ -87,25 +90,26 @@
     >
       <form id="tenant-form" class="grid gap-4 lg:grid-cols-2 lg:items-start lg:gap-x-8" @submit.prevent="saveTenant">
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Unit &amp; contact</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unit &amp; contact</p>
 
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="label-field sm:col-span-2">
               Building
-              <select v-model="form.rental_building_id" class="input-field" required @change="onBuildingChange">
-                <option disabled value="">Select building</option>
-                <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-              </select>
+              <BuildingSearchSelect
+                v-model="form.rental_building_id"
+                :buildings="buildings"
+                required
+                @change="onBuildingChange"
+              />
             </label>
 
             <label class="label-field sm:col-span-2">
               Vacant unit
-              <select v-model="form.rental_unit_id" class="input-field" required>
-                <option disabled value="">Select unit</option>
-                <option v-for="unit in vacantUnits" :key="unit.id" :value="unit.id">
-                  {{ unit.house_number }} — {{ unit.description }}
-                </option>
-              </select>
+              <UnitSearchSelect
+                v-model="form.rental_unit_id"
+                :units="vacantUnits"
+                required
+              />
             </label>
 
             <label class="label-field">
@@ -126,8 +130,8 @@
         </div>
 
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Rental agreement</p>
-          <p class="text-xs text-zinc-500">Financial terms and metering requirements from the tenant's contract.</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Rental agreement</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Financial terms and metering requirements from the tenant's contract.</p>
 
           <div class="grid gap-3 sm:grid-cols-2">
             <label class="label-field sm:col-span-2">
@@ -136,20 +140,20 @@
             </label>
 
             <label class="label-field">
-              Deposit (KES)
+              {{ moneyLabel('Deposit', 'rental') }}
               <input v-model="form.deposit" type="number" min="0" step="0.01" class="input-field" />
             </label>
 
             <label class="label-field">
-              Monthly service charge (KES)
+              {{ moneyLabel('Monthly service charge', 'rental') }}
               <input v-model="form.service_amount" type="number" min="0" step="0.01" class="input-field" />
             </label>
           </div>
 
           <div class="grid gap-3 sm:grid-cols-2">
-            <div class="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-              <p class="text-sm font-medium text-zinc-900">Water meter reading</p>
-              <p class="mt-0.5 text-xs text-zinc-500">Required monthly under this agreement?</p>
+            <div class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 p-3">
+              <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Water meter reading</p>
+              <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Required monthly under this agreement?</p>
               <div class="segmented-control mt-2 w-full">
                 <button
                   type="button"
@@ -170,9 +174,9 @@
               </div>
             </div>
 
-            <div class="rounded-md border border-zinc-200 bg-zinc-50 p-3">
-              <p class="text-sm font-medium text-zinc-900">Electricity meter reading</p>
-              <p class="mt-0.5 text-xs text-zinc-500">Required monthly under this agreement?</p>
+            <div class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 p-3">
+              <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">Electricity meter reading</p>
+              <p class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Required monthly under this agreement?</p>
               <div class="segmented-control mt-2 w-full">
                 <button
                   type="button"
@@ -216,7 +220,7 @@
           <input v-model="moveOutForm.moved_out_at" type="date" class="input-field" required />
         </label>
         <label class="label-field">
-          Refund amount (KES)
+          {{ moneyLabel('Refund amount', 'rental') }}
           <input v-model="moveOutForm.refund_amount" type="number" min="0" step="0.01" class="input-field" />
         </label>
         <label class="label-field">
@@ -238,6 +242,8 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import UnitSearchSelect from '../../components/ui/UnitSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
 import {
@@ -248,6 +254,7 @@ import {
   moveOutTenant,
   updateTenant,
 } from '../../api/rental'
+import { formatMoney, moneyLabel } from '../../utils/money'
 
 const buildings = ref([])
 const tenants = ref([])
@@ -297,9 +304,7 @@ const tenantColumns = computed(() => {
   return base
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
-}
+
 
 async function loadBuildings() {
   const response = await fetchBuildings()

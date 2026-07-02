@@ -1,9 +1,12 @@
 <template>
-  <div class="flex min-h-screen items-center justify-center bg-zinc-100 px-4">
+  <div class="login-page">
+    <div class="login-page-toolbar">
+      <ThemeToggle />
+    </div>
     <div class="w-full max-w-sm card-surface p-6 shadow-md">
-      <div class="mb-6 border-b border-zinc-200 pb-4">
-        <h1 class="text-base font-semibold tracking-tight text-zinc-900">Sign in</h1>
-        <p class="mt-0.5 text-xs text-zinc-500">Rent & Sales Management Platform</p>
+      <div class="mb-6 border-b border-zinc-200 pb-4 dark:border-zinc-700">
+        <h1 class="page-title">Sign in</h1>
+        <p class="page-subtitle">Rent & Sales Management Platform</p>
       </div>
 
       <form class="space-y-3" @submit.prevent="submit">
@@ -45,6 +48,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import ThemeToggle from '../components/ui/ThemeToggle.vue'
 
 const auth = useAuthStore()
 const router = useRouter()

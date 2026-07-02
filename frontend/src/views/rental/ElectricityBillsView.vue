@@ -1,54 +1,54 @@
 <template>
   <section>
-    <PageHeader title="Electricity bills" subtitle="Tenant meter readings and electricity charges.">
+    <PageHeader
+      title="Electricity bills"
+      subtitle="Record tenant meter readings for monthly billing. Collect payments through Rent Payments."
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate()">
-          Record electricity bill
+          Record electricity reading
         </button>
       </template>
     </PageHeader>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
     </div>
 
-    <ResponsiveDataList :items="bills" :columns="billColumns" empty-message="No electricity bills found.">
+    <ResponsiveDataList :items="bills" :columns="billColumns" empty-message="No electricity readings found.">
       <template #cell-period="{ item }">{{ item.billing_month }}/{{ item.billing_year }}</template>
-      <template #cell-status="{ item }">
-        <StatusBadge :variant="item.status === 'paid' ? 'success' : 'warning'" :label="item.status" />
-      </template>
-      <template #actions="{ item }">
-        <button
-          v-if="item.status !== 'paid'"
-          type="button"
-          class="btn-secondary w-full sm:w-auto"
-          @click="markPaid(item)"
-        >
-          Mark paid
-        </button>
+      <template #cell-billing_status="{ item }">
+        <StatusBadge :variant="billingStatusVariant(item)" :label="item.status_label" />
       </template>
     </ResponsiveDataList>
 
-    <AppDialog v-model:open="showForm" title="Record electricity bill" size="md" :close-on-backdrop="false">
+    <AppDialog v-model:open="showForm" title="Record electricity reading" size="md" :close-on-backdrop="false">
+      <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
+        Enter the meter reading for the billing period. After the monthly charge batch is approved, this amount is added to the tenant balance. Payments are recorded in Rent Payments.
+      </p>
       <div class="grid gap-4 lg:grid-cols-2">
         <label class="label-field lg:col-span-2">
           Building
-          <select v-model="form.rental_building_id" class="input-field" required @change="onBuildingChange">
-            <option disabled value="">Select building</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="form.rental_building_id"
+            :buildings="buildings"
+            required
+            @change="onBuildingChange"
+          />
         </label>
         <label class="label-field lg:col-span-2">
           Tenant
-          <select v-model="form.tenant_id" class="input-field" required>
-            <option disabled value="">Select tenant</option>
-            <option v-for="tenant in activeTenants" :key="tenant.id" :value="tenant.id">
-              {{ tenant.name }} — {{ tenant.unit_label }}
-            </option>
-          </select>
+          <TenantSearchSelect
+            v-model="form.tenant_id"
+            :tenants="activeTenants"
+            required
+          />
         </label>
         <label class="label-field">
           Month
@@ -69,11 +69,11 @@
           <input v-model="form.current_reading" type="number" min="0" class="input-field" required />
         </label>
         <label class="label-field">
-          Rate (KES/unit)
+          {{ moneyLabel('Rate', 'rental') }}/unit
           <input v-model="form.rate" type="number" min="0" step="0.01" class="input-field" required />
         </label>
         <label class="label-field">
-          Fixed fee (KES)
+          {{ moneyLabel('Fixed fee', 'rental') }}
           <input v-model="form.fixed_fee" type="number" min="0" step="0.01" class="input-field" />
         </label>
         <label class="label-field lg:col-span-2">
@@ -81,11 +81,13 @@
           <input v-model="form.remark" class="input-field" />
         </label>
       </div>
-      <p v-if="previewAmount" class="mt-3 text-sm text-slate-600">Estimated amount: KES {{ formatMoney(previewAmount) }}</p>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="previewAmount" class="mt-3 text-sm text-zinc-600 dark:text-zinc-400">
+        Estimated charge: {{ formatMoney(previewAmount, 'rental') }}
+      </p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save reading</button>
       </template>
     </AppDialog>
   </section>
@@ -96,6 +98,8 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import TenantSearchSelect from '../../components/ui/TenantSearchSelect.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import {
@@ -103,8 +107,8 @@ import {
   fetchBuildings,
   fetchTenants,
   fetchTenantElectricityBills,
-  markTenantElectricityBillPaid,
 } from '../../api/rental'
+import { formatMoney, moneyLabel } from '../../utils/money'
 
 const route = useRoute()
 
@@ -131,7 +135,7 @@ const billColumns = [
   { key: 'period', label: 'Period', mobileCard: true },
   { key: 'tenant_name', label: 'Tenant', cardTitle: true },
   { key: 'amount', label: 'Amount', align: 'right', money: true, mobileCard: true },
-  { key: 'status', label: 'Status', mobileCard: true },
+  { key: 'billing_status', label: 'Billing status', mobileCard: true },
   { key: 'building_name', label: 'Building', tabletCard: true },
   { key: 'consumption', label: 'Consumption', align: 'right', tabletCard: true },
 ]
@@ -148,8 +152,10 @@ const previewAmount = computed(() => {
   return consumption * Number(form.rate || 0) + Number(form.fixed_fee || 0)
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
+function billingStatusVariant(item) {
+  if (item.status === 'paid') return 'success'
+  if (item.charge_posted) return 'info'
+  return 'neutral'
 }
 
 async function loadBuildings() {
@@ -222,16 +228,7 @@ async function save() {
     const validation = e.response?.data?.errors
     error.value = validation
       ? Object.values(validation).flat().join(' ')
-      : e.response?.data?.message || 'Could not save electricity bill.'
-  }
-}
-
-async function markPaid(bill) {
-  try {
-    await markTenantElectricityBillPaid(bill.id)
-    await load()
-  } catch (e) {
-    window.alert(e.response?.data?.message || 'Could not mark bill as paid.')
+      : e.response?.data?.message || 'Could not save electricity reading.'
   }
 }
 

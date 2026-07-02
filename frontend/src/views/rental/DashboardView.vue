@@ -27,14 +27,14 @@
       <div class="dashboard-metrics-grid">
         <DashboardMetricCard
           label="Total outstanding"
-          :value="formatMoney(data.outstanding.total_balance)"
+          :value="formatMoney(data.outstanding.total_balance, 'rental')"
           :hint="`${data.outstanding.tenants_with_balance} tenants owe`"
           accent="warning"
           to="/rental/tenants"
         />
         <DashboardMetricCard
           label="Collected this month"
-          :value="formatMoney(data.collections.current_month)"
+          :value="formatMoney(data.collections.current_month, 'rental')"
           :hint="`${data.collections.payment_count_current_month} payments`"
           :trend="data.collections.change_percent"
           accent="success"
@@ -65,17 +65,17 @@
           to="/rental/charge-batches"
         />
         <DashboardMetricCard
-          label="Pending water bills"
-          :value="String(data.utilities.pending_water_bills.count)"
-          :hint="formatMoney(data.utilities.pending_water_bills.amount)"
-          accent="info"
+          label="Missing water readings"
+          :value="String(data.utilities.missing_water_readings.count)"
+          hint="Tenants without a reading this month"
+          :accent="data.utilities.missing_water_readings.count > 0 ? 'warning' : 'neutral'"
           to="/rental/water-bills"
         />
         <DashboardMetricCard
-          label="Pending electricity"
-          :value="String(data.utilities.pending_electricity_bills.count)"
-          :hint="formatMoney(data.utilities.pending_electricity_bills.amount)"
-          accent="info"
+          label="Missing electricity readings"
+          :value="String(data.utilities.missing_electricity_readings.count)"
+          hint="Tenants without a reading this month"
+          :accent="data.utilities.missing_electricity_readings.count > 0 ? 'warning' : 'neutral'"
           to="/rental/electricity-bills"
         />
         <DashboardMetricCard
@@ -93,7 +93,7 @@
             <div v-for="item in breakdownItems" :key="item.key" class="dashboard-breakdown-row">
               <div class="dashboard-breakdown-meta">
                 <span class="dashboard-breakdown-label">{{ item.label }}</span>
-                <span class="dashboard-breakdown-amount tabular-nums">{{ formatMoney(item.amount) }}</span>
+                <span class="dashboard-breakdown-amount tabular-nums">{{ formatMoney(item.amount, 'rental') }}</span>
               </div>
               <div class="dashboard-breakdown-track">
                 <div
@@ -106,15 +106,15 @@
           </div>
           <div class="dashboard-breakdown-footer">
             <div>
-              <p class="text-xs text-zinc-500">Paid up</p>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400">Paid up</p>
               <p class="text-sm font-semibold tabular-nums text-emerald-700">{{ data.outstanding.tenants_paid_up }}</p>
             </div>
             <div>
-              <p class="text-xs text-zinc-500">In credit</p>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400">In credit</p>
               <p class="text-sm font-semibold tabular-nums text-sky-700">{{ data.outstanding.tenants_in_credit }}</p>
             </div>
             <div>
-              <p class="text-xs text-zinc-500">With balance</p>
+              <p class="text-xs text-zinc-500 dark:text-zinc-400">With balance</p>
               <p class="text-sm font-semibold tabular-nums text-amber-700">{{ data.outstanding.tenants_with_balance }}</p>
             </div>
           </div>
@@ -127,16 +127,16 @@
         >
           <div class="dashboard-collections">
             <div class="dashboard-collections-card">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500">This month</p>
-              <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900">
-                {{ formatMoney(data.collections.current_month) }}
+              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">This month</p>
+              <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+                {{ formatMoney(data.collections.current_month, 'rental') }}
               </p>
-              <p class="mt-1 text-xs text-zinc-500">{{ data.collections.payment_count_current_month }} payments recorded</p>
+              <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ data.collections.payment_count_current_month }} payments recorded</p>
             </div>
             <div class="dashboard-collections-card dashboard-collections-card-muted">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500">Last month</p>
-              <p class="mt-1 text-xl font-semibold tabular-nums text-zinc-700">
-                {{ formatMoney(data.collections.previous_month) }}
+              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last month</p>
+              <p class="mt-1 text-xl font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">
+                {{ formatMoney(data.collections.previous_month, 'rental') }}
               </p>
               <p
                 v-if="data.collections.change_percent !== null"
@@ -148,11 +148,11 @@
             </div>
           </div>
           <div class="dashboard-charges-summary">
-            <p class="text-xs font-medium uppercase tracking-wide text-zinc-500">Charges this month</p>
-            <p class="mt-1 text-lg font-semibold tabular-nums text-zinc-900">
-              {{ formatMoney(data.charges.current_month_total) }}
+            <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Charges this month</p>
+            <p class="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+              {{ formatMoney(data.charges.current_month_total, 'rental') }}
             </p>
-            <p class="text-xs text-zinc-500">{{ data.charges.current_month_count }} charge lines posted</p>
+            <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ data.charges.current_month_count }} charge lines posted</p>
           </div>
         </DashboardPanel>
       </div>
@@ -163,14 +163,14 @@
           <ul v-else class="dashboard-list">
             <li v-for="debtor in data.top_debtors" :key="debtor.tenant_id" class="dashboard-list-item">
               <div class="min-w-0">
-                <p class="truncate font-medium text-zinc-900">{{ debtor.tenant_name }}</p>
-                <p class="truncate text-xs text-zinc-500">
+                <p class="truncate font-medium text-zinc-900 dark:text-zinc-100">{{ debtor.tenant_name }}</p>
+                <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">
                   {{ debtor.building_name }} · Unit {{ debtor.unit_label }}
                 </p>
               </div>
               <div class="text-right">
-                <p class="font-semibold tabular-nums text-amber-700">{{ formatMoney(debtor.balance) }}</p>
-                <p class="text-[11px] text-zinc-500">
+                <p class="font-semibold tabular-nums text-amber-700">{{ formatMoney(debtor.balance, 'rental') }}</p>
+                <p class="text-[11px] text-zinc-500 dark:text-zinc-400">
                   R {{ formatCompact(debtor.rent_owed) }} · S {{ formatCompact(debtor.services_owed) }} · W {{ formatCompact(debtor.water_owed) }}
                 </p>
               </div>
@@ -183,13 +183,13 @@
           <ul v-else class="dashboard-list">
             <li v-for="payment in data.recent_payments" :key="payment.payment_id" class="dashboard-list-item">
               <div class="min-w-0">
-                <p class="truncate font-medium text-zinc-900">{{ payment.tenant_name }}</p>
-                <p class="truncate text-xs text-zinc-500">
+                <p class="truncate font-medium text-zinc-900 dark:text-zinc-100">{{ payment.tenant_name }}</p>
+                <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">
                   {{ payment.building_name }} · {{ payment.paid_at }}
                   <span v-if="payment.invoice_reference"> · {{ payment.invoice_reference }}</span>
                 </p>
               </div>
-              <p class="font-semibold tabular-nums text-emerald-700">{{ formatMoney(payment.amount) }}</p>
+              <p class="font-semibold tabular-nums text-emerald-700">{{ formatMoney(payment.amount, 'rental') }}</p>
             </li>
           </ul>
         </DashboardPanel>
@@ -211,12 +211,12 @@
               </thead>
               <tbody>
                 <tr v-for="building in data.building_summary" :key="building.building_id">
-                  <td class="font-medium text-zinc-900">{{ building.building_name }}</td>
+                  <td class="font-medium text-zinc-900 dark:text-zinc-100">{{ building.building_name }}</td>
                   <td class="text-right tabular-nums">{{ building.occupancy_rate }}%</td>
                   <td class="text-right tabular-nums">{{ building.active_tenants }}</td>
                   <td class="text-right tabular-nums">{{ building.vacant_units }}</td>
-                  <td class="text-right tabular-nums font-medium" :class="building.outstanding_balance > 0 ? 'text-amber-700' : 'text-zinc-600'">
-                    {{ formatMoney(building.outstanding_balance) }}
+                  <td class="text-right tabular-nums font-medium" :class="building.outstanding_balance > 0 ? 'text-amber-700' : 'text-zinc-600 dark:text-zinc-400'">
+                    {{ formatMoney(building.outstanding_balance, 'rental') }}
                   </td>
                 </tr>
               </tbody>
@@ -229,14 +229,14 @@
           <ul v-else class="dashboard-list">
             <li v-for="moveOut in data.recent_move_outs" :key="moveOut.id" class="dashboard-list-item">
               <div class="min-w-0">
-                <p class="truncate font-medium text-zinc-900">{{ moveOut.tenant_name }}</p>
-                <p class="truncate text-xs text-zinc-500">
+                <p class="truncate font-medium text-zinc-900 dark:text-zinc-100">{{ moveOut.tenant_name }}</p>
+                <p class="truncate text-xs text-zinc-500 dark:text-zinc-400">
                   {{ moveOut.building_name }} · Unit {{ moveOut.unit_label }} · {{ moveOut.moved_out_at }}
                 </p>
                 <p v-if="moveOut.reason" class="truncate text-[11px] text-zinc-400">{{ moveOut.reason }}</p>
               </div>
-              <p class="text-sm font-medium tabular-nums text-zinc-700">
-                Refund {{ formatMoney(moveOut.refund_amount) }}
+              <p class="text-sm font-medium tabular-nums text-zinc-700 dark:text-zinc-300">
+                Refund {{ formatMoney(moveOut.refund_amount, 'rental') }}
               </p>
             </li>
           </ul>
@@ -245,7 +245,7 @@
     </template>
 
     <div v-else-if="loading" class="dashboard-loading">
-      <p class="text-sm text-zinc-500">Loading dashboard…</p>
+      <p class="text-sm text-zinc-500 dark:text-zinc-400">Loading dashboard…</p>
     </div>
   </section>
 </template>
@@ -256,6 +256,7 @@ import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard.
 import DashboardActionPanel from '../../components/dashboard/DashboardActionPanel.vue'
 import DashboardPanel from '../../components/dashboard/DashboardPanel.vue'
 import { fetchDashboard } from '../../api/rental'
+import { formatMoney } from '../../utils/money'
 
 const data = ref(null)
 const loading = ref(false)
@@ -280,10 +281,7 @@ const breakdownItems = computed(() => {
   }))
 })
 
-function formatMoney(value) {
-  const amount = Number(value ?? 0)
-  return `KES ${amount.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-}
+
 
 function formatCompact(value) {
   const amount = Number(value ?? 0)

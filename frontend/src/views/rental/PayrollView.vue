@@ -13,10 +13,13 @@
         <button type="button" class="segmented-option" :class="tab === 'payroll' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('payroll')">Payroll</button>
         <button type="button" class="segmented-option" :class="tab === 'employees' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('employees')">Employees</button>
       </div>
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
     </div>
 
     <ResponsiveDataList
@@ -47,17 +50,20 @@
       <div v-if="tab === 'payroll'" class="grid gap-4">
         <label class="label-field">
           Building
-          <select v-model="payrollForm.rental_building_id" class="input-field" required @change="loadEmployeesForForm">
-            <option disabled value="">Select building</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="payrollForm.rental_building_id"
+            :buildings="buildings"
+            required
+            @change="loadEmployeesForForm"
+          />
         </label>
         <label class="label-field">
           Employee
-          <select v-model="payrollForm.employee_id" class="input-field" required>
-            <option disabled value="">Select employee</option>
-            <option v-for="employee in formEmployees" :key="employee.id" :value="employee.id">{{ employee.name }} — {{ formatMoney(employee.salary) }}</option>
-          </select>
+          <EmployeeSearchSelect
+            v-model="payrollForm.employee_id"
+            :employees="formEmployees"
+            required
+          />
         </label>
         <label class="label-field">
           Month
@@ -77,10 +83,13 @@
       <div v-else class="grid gap-4">
         <label class="label-field">
           Building
-          <select v-model="employeeForm.rental_building_id" class="input-field">
-            <option value="">Unassigned</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="employeeForm.rental_building_id"
+            :buildings="buildings"
+            include-all
+            all-label="Unassigned"
+            placeholder="Unassigned"
+          />
         </label>
         <label class="label-field">
           Name
@@ -91,7 +100,7 @@
           <input v-model="employeeForm.position" class="input-field" required />
         </label>
         <label class="label-field">
-          Base salary (KES)
+          {{ moneyLabel('Base salary', 'rental') }}
           <input v-model="employeeForm.salary" type="number" min="0" step="0.01" class="input-field" required />
         </label>
         <label class="label-field">
@@ -119,6 +128,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import EmployeeSearchSelect from '../../components/ui/EmployeeSearchSelect.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import {
   createEmployee,
@@ -130,6 +141,7 @@ import {
   fetchPayroll,
   updateEmployee,
 } from '../../api/rental'
+import { formatMoney, moneyLabel } from '../../utils/money'
 
 const buildings = ref([])
 const payroll = ref([])
@@ -185,9 +197,7 @@ const formTitle = computed(() => {
   return editingEmployee.value ? 'Edit employee' : 'Add employee'
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE').format(Number(value || 0))
-}
+
 
 async function loadBuildings() {
   const response = await fetchBuildings()

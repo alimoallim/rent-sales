@@ -3,16 +3,20 @@
 namespace App\Models;
 
 use App\Enums\SalesPaymentStatus;
+use App\Models\Concerns\HasSalesCurrency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesPayment extends Model
 {
+    use HasSalesCurrency;
+
     /**
      * @var list<string>
      */
     protected $fillable = [
         'legacy_id',
+        'currency_code',
         'client_id',
         'sale_building_id',
         'amount',

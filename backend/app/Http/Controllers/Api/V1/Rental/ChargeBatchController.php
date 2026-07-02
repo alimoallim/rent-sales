@@ -115,6 +115,15 @@ class ChargeBatchController extends Controller
         return $this->batchResponse($batch);
     }
 
+    public function reopenTenant(ChargeBatch $chargeBatch, int $tenantId): ChargeBatchResource
+    {
+        $this->authorize('update', $chargeBatch);
+
+        $batch = $this->chargeBatchService->reopenTenant($chargeBatch, $tenantId, request()->user());
+
+        return $this->batchResponse($batch);
+    }
+
     public function approveAll(ChargeBatch $chargeBatch): JsonResponse
     {
         $this->authorize('approve', $chargeBatch);

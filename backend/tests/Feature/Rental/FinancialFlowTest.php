@@ -243,7 +243,7 @@ class FinancialFlowTest extends TestCase
         ])->assertCreated()
             ->assertJsonPath('data.consumption', 50)
             ->assertJsonPath('data.amount', '2700.00')
-            ->assertJsonPath('data.status', WaterBillStatus::Pending->value);
+            ->assertJsonPath('data.status', WaterBillStatus::Recorded->value);
 
         $this->assertDatabaseMissing('rent_charges', [
             'tenant_id' => $tenant->id,
@@ -368,7 +368,8 @@ class FinancialFlowTest extends TestCase
             ->assertJsonPath('data.services_owed', '10000.00')
             ->assertJsonPath('data.rent_owed', '65000.00')
             ->assertJsonPath('data.total_due', '77700.00')
-            ->assertJsonPath('data.status', 'owes');
+            ->assertJsonPath('data.status', 'owes')
+            ->assertJsonPath('data.currency_code', 'KES');
     }
 
     public function test_partial_payment_applies_water_first_then_services_then_rent(): void

@@ -4,15 +4,11 @@ namespace App\Services\Rental;
 
 use App\Enums\ChargeBatchItemStatus;
 use App\Enums\ChargeBatchStatus;
-use App\Enums\ElectricityBillStatus;
 use App\Enums\TenantStatus;
-use App\Enums\WaterBillStatus;
 use App\Models\ChargeBatch;
 use App\Models\ChargeBatchItem;
 use App\Models\RentalBuilding;
 use App\Models\Tenant;
-use App\Models\TenantElectricityBill;
-use App\Models\TenantWaterBill;
 use Illuminate\Support\Carbon;
 
 class RentalDashboardActionService
@@ -31,7 +27,6 @@ class RentalDashboardActionService
         $items = array_merge($items, $this->openChargeBatchActions());
         $items = array_merge($items, $this->missingMeterReadingActions($billingMonth, $billingYear, $periodLabel));
         $items = array_merge($items, $this->buildingsWithoutBatchActions($billingMonth, $billingYear, $periodLabel));
-        $items = array_merge($items, $this->unpaidUtilityBillActions());
 
         usort($items, fn (array $a, array $b) => [$this->severityRank($b['severity']), $a['title']] <=> [$this->severityRank($a['severity']), $b['title']]);
 
@@ -54,7 +49,15 @@ class RentalDashboardActionService
 
         $batches = ChargeBatch::query()
             ->with('building')
-            ->whereIn('status', [ChargeBatchStatus::Draft, ChargeBatchStatus::PartiallyApproved])
+            ->where(function ($query): void {
+                $query->where('status', ChargeBatchStatus::Draft)
+                    ->orWhereHas('items', function ($itemQuery): void {
+                        $itemQuery->whereIn('item_status', [
+                            ChargeBatchItemStatus::Draft,
+                            ChargeBatchItemStatus::Pending,
+                        ]);
+                    });
+            })
             ->orderByDesc('billing_year')
             ->orderByDesc('billing_month')
             ->get();
@@ -223,48 +226,6 @@ class RentalDashboardActionService
                     ],
                 );
             });
-
-        return $actions;
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function unpaidUtilityBillActions(): array
-    {
-        $actions = [];
-
-        $pendingWater = TenantWaterBill::query()->where('status', WaterBillStatus::Pending)->count();
-        if ($pendingWater > 0) {
-            $amount = (string) TenantWaterBill::query()->where('status', WaterBillStatus::Pending)->sum('amount');
-            $actions[] = $this->makeItem(
-                id: 'unpaid-water-bills',
-                type: 'unpaid_water_bills',
-                category: 'utility_collections',
-                severity: 'low',
-                title: 'Water bills awaiting payment',
-                description: "{$pendingWater} water bill(s) recorded but not yet marked paid — KES {$amount} total",
-                count: $pendingWater,
-                actionPath: '/rental/water-bills',
-                actionLabel: 'View water bills',
-            );
-        }
-
-        $pendingElectricity = TenantElectricityBill::query()->where('status', ElectricityBillStatus::Pending)->count();
-        if ($pendingElectricity > 0) {
-            $amount = (string) TenantElectricityBill::query()->where('status', ElectricityBillStatus::Pending)->sum('amount');
-            $actions[] = $this->makeItem(
-                id: 'unpaid-electricity-bills',
-                type: 'unpaid_electricity_bills',
-                category: 'utility_collections',
-                severity: 'low',
-                title: 'Electricity bills awaiting payment',
-                description: "{$pendingElectricity} electricity bill(s) recorded but not yet marked paid — KES {$amount} total",
-                count: $pendingElectricity,
-                actionPath: '/rental/electricity-bills',
-                actionLabel: 'View electricity bills',
-            );
-        }
 
         return $actions;
     }

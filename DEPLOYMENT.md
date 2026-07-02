@@ -4,6 +4,8 @@ First production deploy for the Rent & Sales platform on **shared hosting** with
 
 **Target URL:** https://rasulmart.com/app
 
+> **Version 2 live test:** see **[DEPLOYMENT-V2.md](./DEPLOYMENT-V2.md)** for the full pre-flight checklist, upgrade path, and UAT verification steps.
+
 ---
 
 ## 1. Server requirements

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Casts\UtilityBillStatusCast;
 use App\Enums\WaterBillStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,7 +41,7 @@ class TenantWaterBill extends Model
             'fixed_fee' => 'decimal:2',
             'amount' => 'decimal:2',
             'amount_paid' => 'decimal:2',
-            'status' => WaterBillStatus::class,
+            'status' => UtilityBillStatusCast::class.':'.WaterBillStatus::class,
         ];
     }
 

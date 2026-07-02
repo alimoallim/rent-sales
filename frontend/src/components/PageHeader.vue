@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-4 flex flex-col gap-3 border-b border-zinc-200 pb-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
+  <div class="mb-4 flex flex-col gap-3 border-b border-zinc-200 dark:border-zinc-700 pb-3 lg:flex-row lg:flex-wrap lg:items-center lg:justify-between">
     <div>
       <h2 class="page-title">{{ title }}</h2>
       <p v-if="subtitle" class="page-subtitle">{{ subtitle }}</p>

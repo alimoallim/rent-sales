@@ -3,9 +3,11 @@
 namespace App\Models;
 
 use App\Enums\RentalUnitStatus;
+use App\Enums\TenantStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RentalUnit extends Model
 {
@@ -41,5 +43,11 @@ class RentalUnit extends Model
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);
+    }
+
+    public function activeTenant(): HasOne
+    {
+        return $this->hasOne(Tenant::class, 'rental_unit_id')
+            ->where('status', TenantStatus::Active);
     }
 }

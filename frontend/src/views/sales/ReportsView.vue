@@ -22,12 +22,15 @@
     </div>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <template v-if="tab === 'balance'">
-        <label class="flex items-center gap-2 text-sm text-zinc-600">
+        <label class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <input v-model="filters.outstanding_only" type="checkbox" class="rounded border-zinc-300" @change="load" />
           Outstanding only
         </label>
@@ -41,40 +44,74 @@
     <div v-if="tab === 'balance' && balanceReport" class="space-y-4">
       <div class="grid gap-2 sm:grid-cols-3">
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Total sale price</p>
-          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(balanceReport.totals.agreed_sale_price) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Total sale price</p>
+          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(balanceReport.totals.agreed_sale_price, 'sales') }}</p>
         </div>
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Total paid</p>
-          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(balanceReport.totals.paid_total) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Total paid</p>
+          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(balanceReport.totals.paid_total, 'sales') }}</p>
         </div>
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Outstanding</p>
-          <p class="text-lg font-semibold tabular-nums text-amber-700">{{ formatMoney(balanceReport.totals.balance) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Outstanding</p>
+          <p class="text-lg font-semibold tabular-nums text-amber-700">{{ formatMoney(balanceReport.totals.balance, 'sales') }}</p>
         </div>
       </div>
-      <ResponsiveDataList :items="balanceReport.rows" :columns="balanceColumns" empty-message="No clients in this report." />
+      <ResponsiveDataList :items="balanceReport.rows" :columns="balanceColumns" money-module="sales" empty-message="No clients in this report.">
+        <template #card-title-client_name="{ item }">
+          <ClientNameLink
+            :client-id="item.client_id"
+            :client-name="item.client_name"
+            :building-id="item.building_id"
+          />
+        </template>
+        <template #cell-client_name="{ item }">
+          <ClientNameLink
+            :client-id="item.client_id"
+            :client-name="item.client_name"
+            :building-id="item.building_id"
+          />
+        </template>
+      </ResponsiveDataList>
     </div>
 
     <div v-if="tab === 'income' && incomeReport" class="space-y-4">
       <div class="grid gap-2 sm:grid-cols-3">
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Income</p>
-          <p class="text-lg font-semibold tabular-nums text-emerald-700">{{ formatMoney(incomeReport.income_total) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Income</p>
+          <p class="text-lg font-semibold tabular-nums text-emerald-700">{{ formatMoney(incomeReport.income_total, 'sales') }}</p>
         </div>
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Expenses</p>
-          <p class="text-lg font-semibold tabular-nums text-red-700">{{ formatMoney(incomeReport.expense_total) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Expenses</p>
+          <p class="text-lg font-semibold tabular-nums text-red-700">{{ formatMoney(incomeReport.expense_total, 'sales') }}</p>
         </div>
         <div class="stat-card">
-          <p class="text-xs text-zinc-500">Net</p>
-          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(incomeReport.net_balance) }}</p>
+          <p class="text-xs text-zinc-500 dark:text-zinc-400">Net</p>
+          <p class="text-lg font-semibold tabular-nums">{{ formatMoney(incomeReport.net_balance, 'sales') }}</p>
         </div>
       </div>
-      <h3 class="text-sm font-semibold text-zinc-800">Payments</h3>
-      <ResponsiveDataList :items="incomeReport.payments" :columns="paymentColumns" empty-message="No payments in range." />
-      <h3 class="text-sm font-semibold text-zinc-800">Expenses</h3>
-      <ResponsiveDataList :items="incomeReport.expenses" :columns="expenseColumns" empty-message="No expenses in range." />
+      <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Payments</h3>
+      <ResponsiveDataList :items="incomeReport.payments" :columns="paymentColumns" money-module="sales" empty-message="No payments in range.">
+        <template #card-title-client_name="{ item }">
+          <ClientNameLink
+            v-if="item.client_id"
+            :client-id="item.client_id"
+            :client-name="item.client_name"
+            :building-id="item.sale_building_id"
+          />
+          <span v-else>{{ item.client_name }}</span>
+        </template>
+        <template #cell-client_name="{ item }">
+          <ClientNameLink
+            v-if="item.client_id"
+            :client-id="item.client_id"
+            :client-name="item.client_name"
+            :building-id="item.sale_building_id"
+          />
+          <span v-else>{{ item.client_name }}</span>
+        </template>
+      </ResponsiveDataList>
+      <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Expenses</h3>
+      <ResponsiveDataList :items="incomeReport.expenses" :columns="expenseColumns" money-module="sales" empty-message="No expenses in range." />
     </div>
   </section>
 </template>
@@ -82,7 +119,10 @@
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import ClientNameLink from '../../components/sales/ClientNameLink.vue'
+import { formatMoney } from '../../utils/money'
 import { fetchBalanceReport, fetchBuildings, fetchIncomeStatement } from '../../api/sales'
 
 const tab = ref('balance')
@@ -115,10 +155,6 @@ const expenseColumns = [
   { key: 'amount', label: 'Amount', align: 'right', money: true },
   { key: 'expense_date', label: 'Date', format: (row) => formatDate(row.expense_date) },
 ]
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2 }).format(Number(value || 0))
-}
 
 function formatDate(value) {
   if (!value) return '—'

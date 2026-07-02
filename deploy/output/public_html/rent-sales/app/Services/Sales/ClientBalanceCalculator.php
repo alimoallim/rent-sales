@@ -4,6 +4,7 @@ namespace App\Services\Sales;
 
 use App\Enums\SalesPaymentStatus;
 use App\Models\Client;
+use App\Support\MoneyConfig;
 
 class ClientBalanceCalculator
 {
@@ -30,7 +31,7 @@ class ClientBalanceCalculator
     }
 
     /**
-     * @return array{agreed_sale_price: string, deposit: string, payments_total: string, discounts_total: string, paid_total: string, balance: string, status: string}
+     * @return array{agreed_sale_price: string, deposit: string, payments_total: string, discounts_total: string, paid_total: string, balance: string, status: string, currency_code: string}
      */
     public function summary(Client|int $client): array
     {
@@ -60,6 +61,7 @@ class ClientBalanceCalculator
             'paid_total' => $paidTotal,
             'balance' => $balance,
             'status' => bccomp($balance, '0', 2) > 0 ? 'owes' : (bccomp($balance, '0', 2) < 0 ? 'credit' : 'paid_up'),
+            'currency_code' => $clientModel->currency_code ?? MoneyConfig::salesCurrency(),
         ];
     }
 }

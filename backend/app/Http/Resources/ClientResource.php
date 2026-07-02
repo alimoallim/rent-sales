@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -25,6 +26,7 @@ class ClientResource extends JsonResource
             'email' => $this->email,
             'passport_or_id' => $this->passport_or_id,
             'agreed_sale_price' => $this->agreed_sale_price,
+            'currency_code' => $this->currency_code ?? MoneyConfig::salesCurrency(),
             'voucher_number' => $this->voucher_number,
             'deposit' => $this->deposit,
             'next_of_kin_name' => $this->next_of_kin_name,

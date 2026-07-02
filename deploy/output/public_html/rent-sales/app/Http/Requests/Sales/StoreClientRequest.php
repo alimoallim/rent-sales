@@ -2,10 +2,13 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Http\Requests\Concerns\ProhibitsSalesCurrencyOverride;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreClientRequest extends FormRequest
 {
+    use ProhibitsSalesCurrencyOverride;
+
     public function authorize(): bool
     {
         return true;
@@ -16,7 +19,7 @@ class StoreClientRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return array_merge($this->prohibitSalesCurrencyOverride(), [
             'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id'],
             'sale_unit_id' => ['required', 'integer', 'exists:sale_units,id'],
             'name' => ['required', 'string', 'max:100'],
@@ -32,6 +35,6 @@ class StoreClientRequest extends FormRequest
             'next_of_kin_id' => ['nullable', 'string', 'max:50'],
             'next_of_kin_phone' => ['nullable', 'string', 'max:30'],
             'registration_date' => ['nullable', 'date'],
-        ];
+        ]);
     }
 }

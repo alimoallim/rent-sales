@@ -25,6 +25,7 @@ use App\Models\TenantMoveOut;
 use App\Models\TenantWaterBill;
 use App\Models\User;
 use App\Services\Rental\WaterBillService;
+use App\Support\MoneyConfig;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use RuntimeException;
@@ -236,7 +237,7 @@ class LegacyImporter
             $status = strtolower((string) ($row['status'] ?? 'pending'));
             $this->waterBillStatusByLegacyId[$legacyId] = $status === 'paid'
                 ? WaterBillStatus::Paid->value
-                : WaterBillStatus::Pending->value;
+                : WaterBillStatus::Recorded->value;
         }
     }
 
@@ -606,7 +607,7 @@ class LegacyImporter
                 continue;
             }
 
-            $statusValue = $this->waterBillStatusByLegacyId[$legacyId] ?? WaterBillStatus::Pending->value;
+            $statusValue = $this->waterBillStatusByLegacyId[$legacyId] ?? WaterBillStatus::Recorded->value;
             $amount = $this->money($row['amount'] ?? 0);
 
             if ($dryRun) {
@@ -1033,6 +1034,7 @@ class LegacyImporter
 
             $id = DB::table('sale_units')->insertGetId([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'house_number' => (string) $row['house_no'],
                 'floor' => (string) $row['floor'],
@@ -1072,6 +1074,7 @@ class LegacyImporter
 
             $id = DB::table('clients')->insertGetId([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'sale_unit_id' => $unitId,
                 'name' => (string) $row['ClientName'],
@@ -1128,6 +1131,7 @@ class LegacyImporter
 
             DB::table('sales_payments')->insert([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'client_id' => $clientId,
                 'sale_building_id' => $buildingId,
                 'amount' => $this->money($row['amount'] ?? 0),
@@ -1168,6 +1172,7 @@ class LegacyImporter
 
             DB::table('sales_expenses')->insert([
                 'legacy_id' => $legacyId,
+                'currency_code' => MoneyConfig::salesCurrency(),
                 'sale_building_id' => $buildingId,
                 'name' => (string) $row['expensename'],
                 'amount' => $this->money($row['amountpaid'] ?? 0),

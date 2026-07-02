@@ -4,8 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Rent & Sales Platform</title>
+    <script>
+      (function () {
+        var saved = localStorage.getItem('rsp-theme')
+        var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+        var dark = saved === 'dark' || (saved !== 'light' && prefersDark)
+        if (dark) document.documentElement.classList.add('dark')
+        document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+      })()
+    </script>
   </head>
-  <body class="bg-zinc-100 text-zinc-900">
+  <body>
     <div id="app"></div>
     <script type="module" src="/src/main.js"></script>
   </body>

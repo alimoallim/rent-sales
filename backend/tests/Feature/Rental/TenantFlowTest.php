@@ -171,4 +171,42 @@ class TenantFlowTest extends TestCase
         $this->actingAs($user)->deleteJson("/api/v1/rental/buildings/{$building->id}")
             ->assertUnprocessable();
     }
+
+    public function test_units_index_includes_summary_and_active_tenant(): void
+    {
+        $user = $this->rentalUser();
+        $building = RentalBuilding::query()->create(['name' => 'Baraka Towers']);
+        $occupiedUnit = RentalUnit::query()->create([
+            'rental_building_id' => $building->id,
+            'house_number' => 'A1',
+            'floor' => '1',
+            'description' => '2 bed',
+            'monthly_rent' => 65000,
+            'status' => RentalUnitStatus::Occupied,
+        ]);
+        RentalUnit::query()->create([
+            'rental_building_id' => $building->id,
+            'house_number' => 'B2',
+            'floor' => '2',
+            'description' => '1 bed',
+            'monthly_rent' => 45000,
+            'status' => RentalUnitStatus::Vacant,
+        ]);
+        Tenant::query()->create([
+            'rental_building_id' => $building->id,
+            'rental_unit_id' => $occupiedUnit->id,
+            'name' => 'Jane Doe',
+            'phone' => '0700000000',
+            'status' => TenantStatus::Active,
+            'created_by' => $user->id,
+        ]);
+
+        $this->actingAs($user)->getJson('/api/v1/rental/units')
+            ->assertOk()
+            ->assertJsonPath('summary.total', 2)
+            ->assertJsonPath('summary.vacant', 1)
+            ->assertJsonPath('summary.occupied', 1)
+            ->assertJsonPath('summary.occupancy_rate', 50)
+            ->assertJsonPath('data.0.active_tenant.name', 'Jane Doe');
+    }
 }

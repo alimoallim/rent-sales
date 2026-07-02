@@ -5,7 +5,7 @@
   >
     <span class="text-sm">
       Showing {{ label }} for
-      <span class="font-semibold text-zinc-900">{{ tenantName || `tenant #${tenantId}` }}</span>
+      <span class="font-semibold text-zinc-900 dark:text-zinc-100">{{ tenantName || `tenant #${tenantId}` }}</span>
     </span>
     <button type="button" class="btn-ghost !min-h-8 self-start sm:self-auto" @click="$emit('clear')">
       Show all tenants

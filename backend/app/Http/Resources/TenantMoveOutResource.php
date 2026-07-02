@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,6 +16,7 @@ class TenantMoveOutResource extends JsonResource
     {
         return [
             'id' => $this->id,
+            'currency_code' => MoneyConfig::rentalCurrency(),
             'tenant_id' => $this->tenant_id,
             'tenant_name' => $this->whenLoaded('tenant', fn () => $this->tenant->name),
             'rental_building_id' => $this->rental_building_id,

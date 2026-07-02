@@ -10,6 +10,7 @@ use App\Models\SalesExpense;
 use App\Models\SalesPayment;
 use App\Models\SaleBuilding;
 use App\Models\SaleUnit;
+use App\Support\MoneyConfig;
 use Illuminate\Support\Carbon;
 
 class SalesReportService
@@ -50,6 +51,7 @@ class SalesReportService
                 'building_name' => $client->building?->name,
                 'unit_label' => $client->unit?->house_number,
                 'agreed_sale_price' => $summary['agreed_sale_price'],
+                'currency_code' => $summary['currency_code'],
                 'deposit' => $summary['deposit'],
                 'payment_count' => $paymentCount,
                 'paid_total' => $summary['paid_total'],
@@ -63,6 +65,7 @@ class SalesReportService
 
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::salesCurrency(),
             'filters' => [
                 'building_id' => $buildingId,
                 'outstanding_only' => $outstandingOnly,
@@ -109,9 +112,12 @@ class SalesReportService
             $incomeTotal = bcadd($incomeTotal, $net, 2);
             $paymentRows[] = [
                 'id' => $payment->id,
+                'client_id' => $payment->client_id,
+                'sale_building_id' => $payment->sale_building_id,
                 'client_name' => $payment->client?->name,
                 'building_name' => $payment->building?->name,
                 'amount' => $payment->amount,
+                'currency_code' => $payment->currency_code ?? $salesCurrency,
                 'discount' => $payment->discount,
                 'paid_at' => $payment->paid_at?->toISOString(),
             ];
@@ -127,12 +133,16 @@ class SalesReportService
                 'name' => $expense->name,
                 'building_name' => $expense->building?->name,
                 'amount' => $expense->amount,
+                'currency_code' => $expense->currency_code ?? $salesCurrency,
                 'expense_date' => $expense->expense_date?->toISOString(),
             ];
         }
 
+        $salesCurrency = MoneyConfig::salesCurrency();
+
         return [
             'generated_at' => now()->toISOString(),
+            'currency_code' => $salesCurrency,
             'filters' => [
                 'building_id' => $buildingId,
                 'from' => $from,

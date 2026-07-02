@@ -2,16 +2,20 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSalesCurrency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesExpense extends Model
 {
+    use HasSalesCurrency;
+
     /**
      * @var list<string>
      */
     protected $fillable = [
         'legacy_id',
+        'currency_code',
         'sale_building_id',
         'name',
         'amount',

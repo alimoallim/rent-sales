@@ -3,6 +3,7 @@
 namespace App\Services\Rental;
 
 use App\Enums\RentPaymentStatus;
+use App\Support\MoneyConfig;
 use App\Models\RentCharge;
 use App\Models\RentPayment;
 use App\Models\Tenant;
@@ -26,7 +27,8 @@ class TenantBalanceBreakdownService
      *     rent_owed: string,
      *     total_due: string,
      *     credit_balance: string,
-     *     status: 'owes'|'paid_up'|'credit'
+     *     status: 'owes'|'paid_up'|'credit',
+     *     currency_code: string
      * }
      */
     public function breakdown(Tenant|int $tenant, ?int $excludePaymentId = null): array
@@ -66,6 +68,7 @@ class TenantBalanceBreakdownService
             'total_due' => $totalDue,
             'credit_balance' => bccomp($totalDue, '0', 2) < 0 ? bcmul($totalDue, '-1', 2) : '0.00',
             'status' => $this->resolveStatus($totalDue),
+            'currency_code' => MoneyConfig::rentalCurrency(),
         ];
     }
 

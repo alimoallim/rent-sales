@@ -58,6 +58,7 @@ Route::prefix('v1')->group(function (): void {
         Route::put('charge-batches/{chargeBatch}/items/{chargeBatchItem}', [ChargeBatchController::class, 'updateItem']);
         Route::post('charge-batches/{chargeBatch}/tenants/{tenantId}/exclude', [ChargeBatchController::class, 'excludeTenant']);
         Route::post('charge-batches/{chargeBatch}/tenants/{tenantId}/approve', [ChargeBatchController::class, 'approveTenant']);
+        Route::post('charge-batches/{chargeBatch}/tenants/{tenantId}/reopen', [ChargeBatchController::class, 'reopenTenant']);
         Route::post('charge-batches/{chargeBatch}/approve-all', [ChargeBatchController::class, 'approveAll']);
 
         Route::get('payments', [RentPaymentController::class, 'index']);
@@ -67,11 +68,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('water-bills', [TenantWaterBillController::class, 'index']);
         Route::post('water-bills', [TenantWaterBillController::class, 'store']);
-        Route::post('water-bills/{tenantWaterBill}/mark-paid', [TenantWaterBillController::class, 'markPaid']);
 
         Route::get('electricity-bills', [TenantElectricityBillController::class, 'index']);
         Route::post('electricity-bills', [TenantElectricityBillController::class, 'store']);
-        Route::post('electricity-bills/{tenantElectricityBill}/mark-paid', [TenantElectricityBillController::class, 'markPaid']);
 
         Route::get('utilities/nairobi-water', [BuildingUtilityController::class, 'nairobiWaterIndex']);
         Route::post('utilities/nairobi-water', [BuildingUtilityController::class, 'nairobiWaterStore']);

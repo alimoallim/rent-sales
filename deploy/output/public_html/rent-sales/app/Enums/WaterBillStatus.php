@@ -4,6 +4,6 @@ namespace App\Enums;
 
 enum WaterBillStatus: string
 {
-    case Pending = 'pending';
+    case Recorded = 'recorded';
     case Paid = 'paid';
 }

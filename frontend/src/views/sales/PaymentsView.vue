@@ -7,10 +7,13 @@
     </PageHeader>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <select v-model="filters.status" class="input-field" @change="load">
         <option value="">All statuses</option>
         <option value="active">Active</option>
@@ -18,7 +21,21 @@
       </select>
     </div>
 
-    <ResponsiveDataList :items="payments" :columns="columns" empty-message="No payments recorded yet.">
+    <ResponsiveDataList :items="payments" :columns="columns" money-module="sales" empty-message="No payments recorded yet.">
+      <template #card-title-client_name="{ item }">
+        <ClientNameLink
+          :client-id="item.client_id"
+          :client-name="item.client_name"
+          :building-id="item.sale_building_id"
+        />
+      </template>
+      <template #cell-client_name="{ item }">
+        <ClientNameLink
+          :client-id="item.client_id"
+          :client-name="item.client_name"
+          :building-id="item.sale_building_id"
+        />
+      </template>
       <template #cell-status="{ item }">
         <StatusBadge :variant="item.status === 'active' ? 'success' : 'neutral'" :label="item.status" />
       </template>
@@ -52,36 +69,38 @@
         <div class="space-y-3">
           <label class="label-field">
             Building
-            <select v-model="form.sale_building_id" class="input-field" required @change="onBuildingChange">
-              <option disabled value="">Select building</option>
-              <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-            </select>
+            <BuildingSearchSelect
+              v-model="form.sale_building_id"
+              :buildings="buildings"
+              required
+              @change="onBuildingChange"
+            />
           </label>
           <label class="label-field">
             Client
-            <select v-model="form.client_id" class="input-field" required @change="onClientChange">
-              <option disabled value="">Select client</option>
-              <option v-for="client in activeClients" :key="client.id" :value="client.id">
-                {{ client.name }} — {{ client.unit_label }}
-              </option>
-            </select>
+            <ClientSearchSelect
+              v-model="form.client_id"
+              :clients="activeClients"
+              required
+              @change="onClientChange"
+            />
           </label>
           <label class="label-field">
-            Amount (KES)
+            Amount (USD)
             <input v-model="form.amount" type="number" min="0.01" step="0.01" class="input-field" required />
           </label>
           <label class="label-field">
-            Discount (KES)
+            Discount (USD)
             <input v-model="form.discount" type="number" min="0" step="0.01" class="input-field" />
           </label>
         </div>
         <div class="space-y-3">
-          <div v-if="summary" class="rounded-md border border-zinc-200 bg-zinc-50 p-3 text-sm">
-            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-600">Client balance</p>
+          <div v-if="summary" class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 p-3 text-sm">
+            <p class="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Client balance</p>
             <dl class="mt-2 grid gap-1">
-              <div class="flex justify-between"><dt>Sale price</dt><dd class="tabular-nums">{{ formatMoney(summary.agreed_sale_price) }}</dd></div>
-              <div class="flex justify-between"><dt>Paid total</dt><dd class="tabular-nums">{{ formatMoney(summary.paid_total) }}</dd></div>
-              <div class="flex justify-between font-medium"><dt>Outstanding</dt><dd class="tabular-nums text-amber-700">{{ formatMoney(summary.balance) }}</dd></div>
+              <div class="flex justify-between"><dt>Sale price</dt><dd class="tabular-nums">{{ formatMoney(summary.agreed_sale_price, 'sales') }}</dd></div>
+              <div class="flex justify-between"><dt>Paid total</dt><dd class="tabular-nums">{{ formatMoney(summary.paid_total, 'sales') }}</dd></div>
+              <div class="flex justify-between font-medium"><dt>Outstanding</dt><dd class="tabular-nums text-amber-700">{{ formatMoney(summary.balance, 'sales') }}</dd></div>
             </dl>
           </div>
           <label class="label-field">
@@ -115,8 +134,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import ClientSearchSelect from '../../components/ui/ClientSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
+import ClientNameLink from '../../components/sales/ClientNameLink.vue'
+import { formatMoney } from '../../utils/money'
 import {
   cancelPayment,
   createPayment,
@@ -157,10 +180,6 @@ const columns = [
   { key: 'paid_at', label: 'Paid on', format: (row) => formatDate(row.paid_at), tabletCard: true },
   { key: 'status', label: 'Status', tabletCard: true },
 ]
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2 }).format(Number(value || 0))
-}
 
 function formatDate(value) {
   if (!value) return '—'
@@ -255,7 +274,7 @@ async function save() {
 }
 
 async function cancelOne(payment) {
-  if (!confirm(`Cancel payment of ${formatMoney(payment.amount)} for ${payment.client_name}?`)) return
+  if (!confirm(`Cancel payment of ${formatMoney(payment.amount, 'sales')} for ${payment.client_name}?`)) return
   try {
     await cancelPayment(payment.id)
     await load()

@@ -2,18 +2,24 @@
 
 namespace App\Models;
 
+use App\Enums\ClientStatus;
 use App\Enums\SaleUnitStatus;
+use App\Models\Concerns\HasSalesCurrency;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class SaleUnit extends Model
 {
+    use HasSalesCurrency;
+
     /**
      * @var list<string>
      */
     protected $fillable = [
         'legacy_id',
+        'currency_code',
         'sale_building_id',
         'house_number',
         'floor',
@@ -41,5 +47,12 @@ class SaleUnit extends Model
     public function clients(): HasMany
     {
         return $this->hasMany(Client::class);
+    }
+
+    public function saleClient(): HasOne
+    {
+        return $this->hasOne(Client::class, 'sale_unit_id')
+            ->where('status', ClientStatus::Active)
+            ->latestOfMany();
     }
 }

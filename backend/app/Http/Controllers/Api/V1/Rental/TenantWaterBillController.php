@@ -47,16 +47,4 @@ class TenantWaterBillController extends Controller
             ->response()
             ->setStatusCode(201);
     }
-
-    public function markPaid(Request $request, TenantWaterBill $tenantWaterBill): TenantWaterBillResource
-    {
-        $this->authorize('update', $tenantWaterBill);
-
-        $bill = $this->waterBillService->markPaid(
-            $tenantWaterBill,
-            $request->input('amount_paid'),
-        );
-
-        return new TenantWaterBillResource($bill);
-    }
 }

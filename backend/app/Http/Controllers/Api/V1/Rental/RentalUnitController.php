@@ -18,14 +18,27 @@ class RentalUnitController extends Controller
     {
         $this->authorize('viewAny', RentalUnit::class);
 
-        $units = RentalUnit::query()
-            ->with('building')
+        $query = RentalUnit::query()
+            ->with(['building', 'activeTenant'])
             ->when($request->integer('building_id'), fn ($query, $buildingId) => $query->where('rental_building_id', $buildingId))
-            ->when($request->string('status')->toString(), fn ($query, $status) => $query->where('status', $status))
+            ->when($request->string('status')->toString(), fn ($query, $status) => $query->where('status', $status));
+
+        $total = (clone $query)->count();
+        $vacant = (clone $query)->where('status', RentalUnitStatus::Vacant)->count();
+        $occupied = (clone $query)->where('status', RentalUnitStatus::Occupied)->count();
+
+        $units = $query
             ->orderBy('house_number')
             ->paginate(50);
 
-        return RentalUnitResource::collection($units);
+        return RentalUnitResource::collection($units)->additional([
+            'summary' => [
+                'total' => $total,
+                'vacant' => $vacant,
+                'occupied' => $occupied,
+                'occupancy_rate' => $total > 0 ? (int) round(($occupied / $total) * 100) : 0,
+            ],
+        ]);
     }
 
     public function store(StoreRentalUnitRequest $request): RentalUnitResource
@@ -37,7 +50,7 @@ class RentalUnitController extends Controller
             'status' => RentalUnitStatus::Vacant,
         ]);
 
-        $unit->load('building');
+        $unit->load(['building', 'activeTenant']);
 
         return new RentalUnitResource($unit);
     }
@@ -46,7 +59,7 @@ class RentalUnitController extends Controller
     {
         $this->authorize('view', $unit);
 
-        $unit->load('building');
+        $unit->load(['building', 'activeTenant']);
 
         return new RentalUnitResource($unit);
     }
@@ -56,7 +69,7 @@ class RentalUnitController extends Controller
         $this->authorize('update', $unit);
 
         $unit->update($request->validated());
-        $unit->load('building');
+        $unit->load(['building', 'activeTenant']);
 
         return new RentalUnitResource($unit);
     }

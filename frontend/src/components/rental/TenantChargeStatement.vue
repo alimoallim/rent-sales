@@ -1,8 +1,8 @@
 <template>
-  <div class="charge-statement-report">
+  <div class="charge-statement-report" :class="{ 'charge-statement-compact': compact }">
     <div
       v-if="statements.length === 0"
-      class="rounded-md border border-dashed border-zinc-300 bg-zinc-50 px-4 py-10 text-center text-sm text-zinc-500"
+      class="rounded-md border border-dashed border-zinc-300 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400"
     >
       No charges found for this tenant.
     </div>
@@ -13,20 +13,20 @@
       class="charge-statement-month content-panel mb-4 overflow-hidden"
       :class="{ 'print-page-break': index < statements.length - 1 }"
     >
-      <div class="border-b border-zinc-200 bg-zinc-50 px-4 py-4 sm:px-5">
+      <div class="border-b border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 px-4 py-4 sm:px-5">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <p class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Monthly charge statement</p>
-            <h3 class="mt-1 text-lg font-semibold tracking-tight text-zinc-900">{{ statement.periodLabel }}</h3>
-            <p class="mt-1 text-sm text-zinc-600">Invoice date: {{ statement.invoiceDate }}</p>
+            <p class="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Monthly charge statement</p>
+            <h3 class="mt-1 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{{ statement.periodLabel }}</h3>
+            <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">Invoice date: {{ statement.invoiceDate }}</p>
           </div>
-          <div class="text-sm text-zinc-700 sm:text-right">
-            <p><span class="font-medium text-zinc-900">Tenant:</span> {{ tenantName }}</p>
+          <div class="text-sm text-zinc-700 dark:text-zinc-300 sm:text-right">
+            <p><span class="font-medium text-zinc-900 dark:text-zinc-100">Tenant:</span> {{ tenantName }}</p>
             <p v-if="statement.building_name">
-              <span class="font-medium text-zinc-900">Building:</span> {{ statement.building_name }}
+              <span class="font-medium text-zinc-900 dark:text-zinc-100">Building:</span> {{ statement.building_name }}
             </p>
             <p v-if="statement.unit_label">
-              <span class="font-medium text-zinc-900">Unit:</span> {{ statement.unit_label }}
+              <span class="font-medium text-zinc-900 dark:text-zinc-100">Unit:</span> {{ statement.unit_label }}
             </p>
           </div>
         </div>
@@ -35,11 +35,11 @@
       <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
           <thead>
-            <tr class="border-b border-zinc-200 bg-white text-left text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            <tr class="border-b border-zinc-200 bg-white dark:bg-zinc-900 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               <th class="px-4 py-2.5 sm:px-5">#</th>
               <th class="px-4 py-2.5 sm:px-5">Description</th>
               <th class="px-4 py-2.5 sm:px-5">Charged on</th>
-              <th class="px-4 py-2.5 text-right sm:px-5">Amount (KES)</th>
+              <th class="px-4 py-2.5 text-right sm:px-5">{{ amountLabel('rental') }}</th>
               <th class="print-hidden px-4 py-2.5 text-right sm:px-5" />
             </tr>
           </thead>
@@ -47,13 +47,13 @@
             <tr
               v-for="(line, lineIndex) in statement.lines"
               :key="`${line.chargeId}-${line.description}-${lineIndex}`"
-              class="border-b border-zinc-100 last:border-0"
+              class="border-b border-zinc-100 dark:border-zinc-800 last:border-0"
             >
-              <td class="px-4 py-2.5 tabular-nums text-zinc-500 sm:px-5">{{ lineIndex + 1 }}</td>
-              <td class="px-4 py-2.5 font-medium text-zinc-900 sm:px-5">{{ line.description }}</td>
-              <td class="px-4 py-2.5 text-zinc-700 sm:px-5">{{ line.chargedOn }}</td>
-              <td class="px-4 py-2.5 text-right font-medium tabular-nums text-zinc-900 sm:px-5">
-                {{ formatMoney(line.amount) }}
+              <td class="px-4 py-2.5 tabular-nums text-zinc-500 dark:text-zinc-400 sm:px-5">{{ lineIndex + 1 }}</td>
+              <td class="px-4 py-2.5 font-medium text-zinc-900 dark:text-zinc-100 sm:px-5">{{ line.description }}</td>
+              <td class="px-4 py-2.5 text-zinc-700 dark:text-zinc-300 sm:px-5">{{ line.chargedOn }}</td>
+              <td class="px-4 py-2.5 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-100 sm:px-5">
+                {{ formatMoney(line.amount, 'rental') }}
               </td>
               <td class="print-hidden px-4 py-2.5 text-right sm:px-5">
                 <button
@@ -68,12 +68,12 @@
             </tr>
           </tbody>
           <tfoot>
-            <tr class="bg-zinc-50">
-              <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold text-zinc-900 sm:px-5">
+            <tr class="bg-zinc-50 dark:bg-zinc-900/50">
+              <td colspan="3" class="px-4 py-3 text-right text-sm font-semibold text-zinc-900 dark:text-zinc-100 sm:px-5">
                 {{ statement.periodLabel }} total
               </td>
-              <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-zinc-900 sm:px-5">
-                {{ formatMoney(statement.monthTotal) }}
+              <td class="px-4 py-3 text-right text-sm font-semibold tabular-nums text-zinc-900 dark:text-zinc-100 sm:px-5">
+                {{ formatMoney(statement.monthTotal, 'rental') }}
               </td>
               <td class="print-hidden sm:px-5" />
             </tr>
@@ -86,16 +86,16 @@
       v-if="statements.length > 0"
       class="content-panel flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
     >
-      <p class="text-sm text-zinc-600">
+      <p class="text-sm text-zinc-600 dark:text-zinc-400">
         {{ statements.length }} billing period{{ statements.length === 1 ? '' : 's' }} ·
         {{ totalLineCount }} line item{{ totalLineCount === 1 ? '' : 's' }}
       </p>
-      <p class="text-base font-semibold tabular-nums text-zinc-900">
-        Grand total: KES {{ formatMoney(grandTotal) }}
+      <p class="text-base font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
+        Grand total: {{ formatMoney(grandTotal, 'rental') }}
       </p>
     </div>
 
-    <p class="mt-3 text-center text-xs text-zinc-400 print:mt-6">
+    <p v-if="!compact" class="mt-3 text-center text-xs text-zinc-400 print:mt-6">
       Generated {{ generatedLabel }} · For billing disputes, refer to the invoice period and charged-on date on each line.
     </p>
   </div>
@@ -103,10 +103,12 @@
 
 <script setup>
 import { computed } from 'vue'
+import { formatMoney, amountLabel, moneyLabel, currencyCode } from '../../utils/money'
 
 const props = defineProps({
   charges: { type: Array, default: () => [] },
   tenantName: { type: String, default: '' },
+  compact: { type: Boolean, default: false },
 })
 
 defineEmits(['edit'])
@@ -123,12 +125,6 @@ const generatedLabel = computed(() => {
   })
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(value || 0))
-}
 
 function formatChargeDate(value) {
   if (!value) return '—'
@@ -283,5 +279,12 @@ const totalLineCount = computed(() =>
   .print-hidden {
     display: none !important;
   }
+}
+.charge-statement-compact .charge-statement-month {
+  margin-bottom: 0.75rem;
+}
+
+.charge-statement-compact .charge-statement-month:last-child {
+  margin-bottom: 0;
 }
 </style>

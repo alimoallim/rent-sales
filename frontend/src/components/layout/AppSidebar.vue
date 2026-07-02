@@ -13,7 +13,7 @@
         </span>
         <span class="min-w-0">
           <span class="block truncate text-sm font-semibold tracking-tight text-white">Rent & Sales</span>
-          <span class="block truncate text-[11px] font-medium text-zinc-500">{{ moduleLabel }}</span>
+          <span class="block truncate text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{{ moduleLabel }}</span>
         </span>
       </RouterLink>
 
@@ -27,6 +27,14 @@
           <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12" />
         </svg>
       </button>
+    </div>
+
+    <div v-if="showModuleSwitcher" class="app-sidebar-module-switch px-3 pb-2 lg:hidden">
+      <p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">Switch module</p>
+      <ModuleSwitcher
+        :current-module="currentModule"
+        @switch="$emit('switch-module', $event)"
+      />
     </div>
 
     <nav class="app-sidebar-nav" aria-label="Main navigation">
@@ -60,7 +68,7 @@
         <span class="app-sidebar-avatar" aria-hidden="true">{{ userInitials }}</span>
         <div class="min-w-0 flex-1">
           <p class="truncate text-sm font-medium text-zinc-200">{{ userName }}</p>
-          <p class="truncate text-[11px] text-zinc-500">{{ roleLabel }}</p>
+          <p class="truncate text-[11px] text-zinc-500 dark:text-zinc-400">{{ roleLabel }}</p>
         </div>
       </div>
     </div>
@@ -80,6 +88,7 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import NavIcon from './NavIcon.vue'
+import ModuleSwitcher from './ModuleSwitcher.vue'
 
 const props = defineProps({
   sections: { type: Array, required: true },
@@ -89,9 +98,11 @@ const props = defineProps({
   moduleLabel: { type: String, default: 'Rental' },
   userName: { type: String, default: '' },
   userRole: { type: String, default: '' },
+  showModuleSwitcher: { type: Boolean, default: false },
+  currentModule: { type: String, default: 'rental' },
 })
 
-defineEmits(['navigate', 'close'])
+defineEmits(['navigate', 'close', 'switch-module'])
 
 const route = useRoute()
 

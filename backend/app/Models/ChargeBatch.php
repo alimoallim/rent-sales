@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ChargeBatchItemStatus;
 use App\Enums\ChargeBatchStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -57,6 +58,16 @@ class ChargeBatch extends Model
 
     public function isEditable(): bool
     {
-        return $this->status !== ChargeBatchStatus::Locked;
+        return true;
+    }
+
+    public function isComplete(): bool
+    {
+        return ! $this->items()
+            ->whereIn('item_status', [
+                ChargeBatchItemStatus::Draft,
+                ChargeBatchItemStatus::Pending,
+            ])
+            ->exists();
     }
 }

@@ -7,15 +7,18 @@
     </PageHeader>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <input v-model="filters.from" type="date" class="input-field" @change="load" />
       <input v-model="filters.to" type="date" class="input-field" @change="load" />
     </div>
 
-    <ResponsiveDataList :items="expenses" :columns="columns" empty-message="No expenses found.">
+    <ResponsiveDataList :items="expenses" :columns="columns" money-module="sales" empty-message="No expenses found.">
       <template #cell-expense_date="{ item }">{{ formatDate(item.expense_date) }}</template>
       <template #actions="{ item }">
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
@@ -27,17 +30,18 @@
       <div class="grid gap-4">
         <label class="label-field">
           Building
-          <select v-model="form.sale_building_id" class="input-field" required>
-            <option disabled value="">Select building</option>
-            <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-          </select>
+          <BuildingSearchSelect
+            v-model="form.sale_building_id"
+            :buildings="buildings"
+            required
+          />
         </label>
         <label class="label-field">
           Name
           <input v-model="form.name" class="input-field" required />
         </label>
         <label class="label-field">
-          Amount (KES)
+          Amount (USD)
           <input v-model="form.amount" type="number" min="0" step="0.01" class="input-field" required />
         </label>
         <label class="label-field">
@@ -62,6 +66,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import { createExpense, deleteExpense, fetchBuildings, fetchExpenses, updateExpense } from '../../api/sales'
 

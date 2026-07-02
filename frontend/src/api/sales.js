@@ -48,6 +48,11 @@ export async function fetchClients(params = {}) {
   return data
 }
 
+export async function fetchClient(clientId) {
+  const { data } = await api.get(`/api/v1/sales/clients/${clientId}`)
+  return data.data
+}
+
 export async function fetchClientPaymentSummary(clientId) {
   const { data } = await api.get(`/api/v1/sales/clients/${clientId}/payment-summary`)
   return data.data

@@ -11,6 +11,10 @@ class WaterBillService
 {
     public const CHARGE_PURPOSE = 'Water';
 
+    public function __construct(
+        private readonly ChargeBatchUtilitySyncService $utilitySync,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $data
      */
@@ -38,13 +42,17 @@ class WaterBillService
         $amount = $data['amount'] ?? $calculated['amount'];
 
         return DB::transaction(function () use ($data, $userId, $calculated, $amount): TenantWaterBill {
-            return TenantWaterBill::query()->create([
+            $bill = TenantWaterBill::query()->create([
                 ...$data,
                 'consumption' => $calculated['consumption'],
                 'amount' => $amount,
-                'status' => WaterBillStatus::Pending,
+                'status' => WaterBillStatus::Recorded,
                 'created_by' => $userId,
             ])->fresh(['tenant', 'building']);
+
+            $this->utilitySync->syncWaterBill($bill);
+
+            return $bill;
         });
     }
 
@@ -63,7 +71,11 @@ class WaterBillService
                 'amount' => $amount,
             ]);
 
-            return $bill->fresh(['tenant', 'building']);
+            $bill = $bill->fresh(['tenant', 'building']);
+
+            $this->utilitySync->syncWaterBill($bill);
+
+            return $bill;
         });
     }
 

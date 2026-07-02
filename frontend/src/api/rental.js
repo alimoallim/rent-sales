@@ -118,6 +118,11 @@ export async function approveChargeBatchTenant(batchId, tenantId) {
   return data
 }
 
+export async function reopenChargeBatchTenant(batchId, tenantId) {
+  const { data } = await api.post(`/api/v1/rental/charge-batches/${batchId}/tenants/${tenantId}/reopen`)
+  return data
+}
+
 export async function approveAllChargeBatch(batchId) {
   const { data } = await api.post(`/api/v1/rental/charge-batches/${batchId}/approve-all`)
   return data
@@ -158,11 +163,6 @@ export async function createWaterBill(payload) {
   return data.data
 }
 
-export async function markWaterBillPaid(id, payload = {}) {
-  const { data } = await api.post(`/api/v1/rental/water-bills/${id}/mark-paid`, payload)
-  return data.data
-}
-
 export async function fetchTenantElectricityBills(params = {}) {
   const { data } = await api.get('/api/v1/rental/electricity-bills', { params })
   return data
@@ -170,11 +170,6 @@ export async function fetchTenantElectricityBills(params = {}) {
 
 export async function createTenantElectricityBill(payload) {
   const { data } = await api.post('/api/v1/rental/electricity-bills', payload)
-  return data.data
-}
-
-export async function markTenantElectricityBillPaid(id, payload = {}) {
-  const { data } = await api.post(`/api/v1/rental/electricity-bills/${id}/mark-paid`, payload)
   return data.data
 }
 

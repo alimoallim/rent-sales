@@ -10,10 +10,13 @@
     </PageHeader>
 
     <div class="filter-bar">
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
       <div class="segmented-control">
         <button
           type="button"
@@ -32,7 +35,7 @@
           Disabled
         </button>
       </div>
-      <label v-if="status === 'active'" class="flex items-center gap-2 text-sm text-zinc-600">
+      <label v-if="status === 'active'" class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <input v-model="filters.with_balance" type="checkbox" class="rounded border-zinc-300" @change="load" />
         With balance only
       </label>
@@ -41,15 +44,30 @@
     <ResponsiveDataList
       :items="clients"
       :columns="clientColumns"
+      money-module="sales"
       :empty-message="status === 'active' ? 'No clients found.' : 'No disabled clients.'"
     >
+      <template #card-title-name="{ item }">
+        <ClientNameLink
+          :client-id="item.id"
+          :client-name="item.name"
+          :building-id="item.sale_building_id"
+        />
+      </template>
+      <template #cell-name="{ item }">
+        <ClientNameLink
+          :client-id="item.id"
+          :client-name="item.name"
+          :building-id="item.sale_building_id"
+        />
+      </template>
       <template #cell-balance="{ item }">
         <span
           v-if="status === 'active'"
           class="font-medium tabular-nums"
           :class="Number(item.balance) > 0 ? 'text-amber-700' : 'text-emerald-700'"
         >
-          {{ formatMoney(item.balance) }}
+          {{ formatMoney(item.balance, 'sales') }}
         </span>
         <span v-else>—</span>
       </template>
@@ -67,22 +85,24 @@
     >
       <form class="grid gap-4 lg:grid-cols-2" @submit.prevent="save">
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Property &amp; contact</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Property &amp; contact</p>
           <label class="label-field">
             Building
-            <select v-model="form.sale_building_id" class="input-field" required @change="onBuildingChange">
-              <option disabled value="">Select building</option>
-              <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-            </select>
+            <BuildingSearchSelect
+              v-model="form.sale_building_id"
+              :buildings="buildings"
+              required
+              @change="onBuildingChange"
+            />
           </label>
           <label class="label-field">
             Unit
-            <select v-model="form.sale_unit_id" class="input-field" required>
-              <option disabled value="">Select unit</option>
-              <option v-for="unit in availableUnits" :key="unit.id" :value="unit.id">
-                {{ unit.house_number }} — {{ unit.description }}
-              </option>
-            </select>
+            <UnitSearchSelect
+              v-model="form.sale_unit_id"
+              :units="availableUnits"
+              module="sales"
+              required
+            />
           </label>
           <label class="label-field">
             Full name
@@ -98,13 +118,13 @@
           </label>
         </div>
         <div class="space-y-3">
-          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500">Sale terms</p>
+          <p class="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Sale terms</p>
           <label class="label-field">
-            Agreed sale price (KES)
+            Agreed sale price (USD)
             <input v-model="form.agreed_sale_price" type="number" min="0" step="0.01" class="input-field" required />
           </label>
           <label class="label-field">
-            Deposit (KES)
+            Deposit (USD)
             <input v-model="form.deposit" type="number" min="0" step="0.01" class="input-field" />
           </label>
           <label class="label-field">
@@ -130,7 +150,11 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import UnitSearchSelect from '../../components/ui/UnitSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import ClientNameLink from '../../components/sales/ClientNameLink.vue'
+import { formatMoney } from '../../utils/money'
 import {
   createClient,
   disableClient,
@@ -181,10 +205,6 @@ const availableUnits = computed(() => {
     return unit.status === 'available'
   })
 })
-
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2 }).format(Number(value || 0))
-}
 
 function setStatus(next) {
   status.value = next

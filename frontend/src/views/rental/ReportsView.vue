@@ -24,10 +24,13 @@
         <option value="income-statement">Income statement</option>
       </select>
 
-      <select v-model="filters.building_id" class="input-field" @change="load">
-        <option value="">All buildings</option>
-        <option v-for="building in buildings" :key="building.id" :value="building.id">{{ building.name }}</option>
-      </select>
+      <BuildingSearchSelect
+        v-model="filters.building_id"
+        :buildings="buildings"
+        include-all
+        placeholder="All buildings"
+        @change="load"
+      />
 
       <template v-if="reportType === 'payment-history'">
         <input v-model="filters.from" type="date" class="input-field" @change="load" />
@@ -53,7 +56,7 @@
       </template>
 
       <template v-if="reportType === 'income-statement'">
-        <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-700">
+        <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
           <input v-model="filters.legacy_income_mode" type="checkbox" class="h-4 w-4" @change="load" />
           Legacy calculation (match old system)
         </label>
@@ -77,7 +80,7 @@
         row-key="tenant_name"
         empty-message="No data for selected filters."
         :footer-label="tableTotals ? 'Totals' : ''"
-        :footer-value="tableTotals ? formatMoney(tableTotals) : ''"
+        :footer-value="tableTotals ? formatMoney(tableTotals, 'rental') : ''"
       >
         <template #cell-paid_at="{ item }">{{ formatDate(item.paid_at) }}</template>
       </ResponsiveDataList>
@@ -88,6 +91,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
+import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
 import IncomeStatementReport from '../../components/rental/IncomeStatementReport.vue'
 import {
@@ -98,6 +102,7 @@ import {
   fetchPaymentHistoryReport,
   fetchTenantBalancesReport,
 } from '../../api/rental'
+import { formatMoney } from '../../utils/money'
 
 const buildings = ref([])
 const reportType = ref('tenant-balances')
@@ -179,9 +184,7 @@ const tableTotals = computed(() => {
   return null
 })
 
-function formatMoney(value) {
-  return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0))
-}
+
 
 function formatDate(value) {
   if (!value) return '—'

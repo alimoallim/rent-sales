@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Support\MoneyConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,7 @@ class SalesPaymentResource extends JsonResource
             'sale_building_id' => $this->sale_building_id,
             'building_name' => $this->whenLoaded('building', fn () => $this->building->name),
             'amount' => $this->amount,
+            'currency_code' => $this->currency_code ?? MoneyConfig::salesCurrency(),
             'discount' => $this->discount,
             'invoice_reference' => $this->invoice_reference,
             'bank' => $this->bank,

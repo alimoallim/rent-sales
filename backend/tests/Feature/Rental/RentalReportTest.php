@@ -103,6 +103,7 @@ class RentalReportTest extends TestCase
 
         $this->actingAs($user)->getJson('/api/v1/rental/reports/tenant-balances?outstanding_only=1')
             ->assertOk()
+            ->assertJsonPath('currency_code', 'KES')
             ->assertJsonPath('rows.0.tenant_name', 'Jane Doe')
             ->assertJsonPath('rows.0.balance', '20000.00')
             ->assertJsonPath('totals.balance', '20000.00');

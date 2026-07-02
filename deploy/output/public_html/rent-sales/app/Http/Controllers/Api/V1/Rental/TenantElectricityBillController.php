@@ -47,16 +47,4 @@ class TenantElectricityBillController extends Controller
             ->response()
             ->setStatusCode(201);
     }
-
-    public function markPaid(Request $request, TenantElectricityBill $tenantElectricityBill): TenantElectricityBillResource
-    {
-        $this->authorize('update', $tenantElectricityBill);
-
-        $bill = $this->electricityBillService->markPaid(
-            $tenantElectricityBill,
-            $request->input('amount_paid'),
-        );
-
-        return new TenantElectricityBillResource($bill);
-    }
 }

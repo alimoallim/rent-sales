@@ -75,18 +75,19 @@ class RentalDashboardTest extends TestCase
             'rate' => 30,
             'fixed_fee' => 0,
             'amount' => 300,
-            'status' => WaterBillStatus::Pending,
+            'status' => WaterBillStatus::Recorded,
             'created_by' => $user->id,
         ]);
 
         $response = $this->actingAs($user)->getJson('/api/v1/rental/dashboard');
 
         $response->assertOk()
+            ->assertJsonPath('currency_code', 'KES')
             ->assertJsonPath('occupancy.buildings', 1)
             ->assertJsonPath('occupancy.active_tenants', 1)
             ->assertJsonPath('occupancy.occupied_units', 1)
             ->assertJsonPath('collections.payment_count_current_month', 1)
-            ->assertJsonPath('utilities.pending_water_bills.count', 1)
+            ->assertJsonPath('utilities.missing_water_readings.count', 0)
             ->assertJsonPath('outstanding.tenants_with_balance', 1)
             ->assertJsonStructure([
                 'period',

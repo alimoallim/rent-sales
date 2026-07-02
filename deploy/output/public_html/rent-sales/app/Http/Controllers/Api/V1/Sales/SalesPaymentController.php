@@ -17,6 +17,8 @@ class SalesPaymentController extends Controller
     {
         $this->authorize('viewAny', SalesPayment::class);
 
+        $perPage = min(max($request->integer('per_page', 50), 1), 100);
+
         $payments = SalesPayment::query()
             ->with(['client.unit', 'building'])
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('sale_building_id', $id))
@@ -25,7 +27,7 @@ class SalesPaymentController extends Controller
             ->when($request->input('from'), fn ($q, $from) => $q->whereDate('paid_at', '>=', $from))
             ->when($request->input('to'), fn ($q, $to) => $q->whereDate('paid_at', '<=', $to))
             ->orderByDesc('paid_at')
-            ->paginate(50);
+            ->paginate($perPage);
 
         return SalesPaymentResource::collection($payments);
     }
