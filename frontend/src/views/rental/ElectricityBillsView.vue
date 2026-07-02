@@ -5,6 +5,9 @@
       subtitle="Record tenant meter readings for monthly billing. Collect payments through Rent Payments."
     >
       <template #actions>
+        <router-link to="/rental/bulk-meter-readings" class="btn-secondary w-full sm:w-auto">
+          Bulk readings
+        </router-link>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate()">
           Record electricity reading
         </button>

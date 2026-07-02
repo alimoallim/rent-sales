@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\Sales\SalesReportController;
 use App\Http\Controllers\Api\V1\Sales\SaleUnitController;
 use App\Http\Controllers\Api\V1\Rental\ChargeBatchController;
 use App\Http\Controllers\Api\V1\Rental\BuildingUtilityController;
+use App\Http\Controllers\Api\V1\Rental\BulkMeterReadingController;
 use App\Http\Controllers\Api\V1\Rental\EmployeeController;
 use App\Http\Controllers\Api\V1\Rental\PayrollEntryController;
 use App\Http\Controllers\Api\V1\Rental\RentChargeController;
@@ -39,7 +40,7 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::middleware(['auth:sanctum', 'role:rental'])->prefix('rental')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'role:rental'])->prefix('rental')->name('rental.')->group(function (): void {
         Route::get('dashboard', RentalDashboardController::class);
         Route::apiResource('buildings', RentalBuildingController::class);
         Route::apiResource('units', RentalUnitController::class);
@@ -69,6 +70,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('water-bills', [TenantWaterBillController::class, 'index']);
         Route::post('water-bills', [TenantWaterBillController::class, 'store']);
 
+        Route::get('bulk-meter-readings', [BulkMeterReadingController::class, 'index']);
+        Route::post('bulk-meter-readings', [BulkMeterReadingController::class, 'store']);
+
         Route::get('electricity-bills', [TenantElectricityBillController::class, 'index']);
         Route::post('electricity-bills', [TenantElectricityBillController::class, 'store']);
 
@@ -91,7 +95,7 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::middleware(['auth:sanctum', 'role:sales'])->prefix('sales')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'role:sales'])->prefix('sales')->name('sales.')->group(function (): void {
         Route::get('dashboard', SalesDashboardController::class);
         Route::apiResource('buildings', SaleBuildingController::class);
         Route::apiResource('units', SaleUnitController::class);
@@ -112,7 +116,7 @@ Route::prefix('v1')->group(function (): void {
         });
     });
 
-    Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
         Route::apiResource('users', UserController::class);
     });
 });

@@ -11,6 +11,7 @@ import RentalCharges from '../views/rental/ChargesView.vue'
 import RentalPayments from '../views/rental/PaymentsView.vue'
 import RentalWaterBills from '../views/rental/WaterBillsView.vue'
 import RentalElectricityBills from '../views/rental/ElectricityBillsView.vue'
+import RentalBulkMeterReadings from '../views/rental/BulkMeterReadingsView.vue'
 import RentalUtilities from '../views/rental/UtilitiesView.vue'
 import RentalReports from '../views/rental/ReportsView.vue'
 import RentalExpenses from '../views/rental/ExpensesView.vue'
@@ -104,6 +105,12 @@ const router = createRouter({
           name: 'rental.electricity-bills',
           component: RentalElectricityBills,
           meta: { module: 'rental', title: 'Electricity' },
+        },
+        {
+          path: 'rental/bulk-meter-readings',
+          name: 'rental.bulk-meter-readings',
+          component: RentalBulkMeterReadings,
+          meta: { module: 'rental', title: 'Bulk readings' },
         },
         {
           path: 'rental/utilities',

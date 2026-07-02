@@ -112,6 +112,7 @@ import {
   updateCharge,
 } from '../../api/rental'
 import { formatMoney, moneyLabel } from '../../utils/money'
+import { escapeHtml, printHtmlDocument } from '../../utils/print'
 
 const props = defineProps({
   tenantId: { type: [Number, String], default: null },
@@ -236,36 +237,14 @@ function printCharges() {
   const area = document.getElementById('tenant-charge-print-area')
   if (!area) return
 
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700')
-  if (!printWindow) return
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${props.tenantName} — Charge history</title>
-        <style>
-          body { font-family: system-ui, sans-serif; padding: 1.5rem; color: #18181b; }
-          h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
-          p { margin: 0 0 1rem; color: #52525b; font-size: 0.875rem; }
-          table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-          th, td { border-bottom: 1px solid #e4e4e7; padding: 0.5rem 0.75rem; text-align: left; }
-          th { font-size: 0.75rem; text-transform: uppercase; color: #71717a; }
-          .text-right { text-align: right; }
-          .month-block { margin-bottom: 1.5rem; break-inside: avoid; }
-          .month-title { font-weight: 600; margin: 0 0 0.5rem; }
-        </style>
-      </head>
-      <body>
-        <h1>${props.tenantName}</h1>
-        <p>Charge history · ${metaLabel.value || 'Tenant statement'}</p>
-        ${area.innerHTML}
-      </body>
-    </html>
-  `)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
+  printHtmlDocument({
+    title: `${props.tenantName} — Charge history`,
+    body: `
+      <h1>${escapeHtml(props.tenantName)}</h1>
+      <p class="meta">Charge history · ${escapeHtml(metaLabel.value || 'Tenant statement')}</p>
+      ${area.innerHTML}
+    `,
+  })
 }
 
 function onClose() {

@@ -705,19 +705,35 @@ body {
   }
 
   .sales-dashboard-pipeline-step {
-    @apply rounded-xl border border-white/10 bg-white dark:bg-zinc-900/5 p-4 backdrop-blur-sm;
+    @apply rounded-xl border border-white/15 bg-white/10 p-4 shadow-sm backdrop-blur-sm;
   }
 
   .sales-dashboard-pipeline-value {
     @apply mt-1 text-xl font-semibold tabular-nums text-white;
   }
 
+  .sales-dashboard-pipeline-hint {
+    @apply mt-1 text-xs text-indigo-100/85;
+  }
+
   .sales-dashboard-pipeline-bar {
-    @apply mt-3 h-1.5 overflow-hidden rounded-full bg-white dark:bg-zinc-900/15;
+    @apply mt-3 h-1.5 overflow-hidden rounded-full bg-white/20;
   }
 
   .sales-dashboard-pipeline-fill {
-    @apply h-full rounded-full bg-gradient-to-r from-emerald-300 to-emerald-400;
+    @apply h-full rounded-full transition-all duration-500;
+  }
+
+  .sales-dashboard-pipeline-fill-available {
+    @apply bg-gradient-to-r from-emerald-300 to-teal-300;
+  }
+
+  .sales-dashboard-pipeline-fill-agreed {
+    @apply bg-gradient-to-r from-violet-300 to-fuchsia-300;
+  }
+
+  .sales-dashboard-pipeline-fill-collected {
+    @apply bg-gradient-to-r from-sky-300 to-indigo-300;
   }
 
   .sales-dashboard-metric-accent {
@@ -747,6 +763,372 @@ body {
   .sales-dashboard-inventory-card {
     @apply flex items-start justify-between gap-3 rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/50 p-3;
   }
+
+  /* —— Bulk meter readings —— */
+  .bulk-meter-page {
+    @apply pb-24;
+  }
+
+  .bulk-meter-setup-panel {
+    overflow: visible;
+  }
+
+  .bulk-meter-setup {
+    @apply mb-5 overflow-visible p-4 sm:p-5;
+  }
+
+  .bulk-meter-setup-header {
+    @apply mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between;
+  }
+
+  .bulk-meter-setup-eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-indigo-600 dark:text-indigo-400;
+  }
+
+  .bulk-meter-setup-title {
+    @apply mt-0.5 text-base font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-session-badge {
+    @apply inline-flex shrink-0 items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 dark:border-emerald-800/80 dark:bg-emerald-950/50 dark:text-emerald-300;
+  }
+
+  .bulk-meter-utility-grid {
+    @apply mb-4 grid gap-3 sm:grid-cols-2;
+  }
+
+  .bulk-meter-utility-card {
+    @apply flex flex-col items-start gap-1 rounded-xl border border-zinc-200 bg-zinc-50/80 p-4 text-left transition-all duration-200 hover:border-zinc-300 hover:shadow-sm dark:border-zinc-700 dark:bg-zinc-900/50 dark:hover:border-zinc-600;
+  }
+
+  .bulk-meter-utility-card-active {
+    @apply border-indigo-300 bg-indigo-50/80 shadow-sm ring-2 ring-indigo-500/20 dark:border-indigo-600 dark:bg-indigo-950/40 dark:ring-indigo-500/30;
+  }
+
+  .bulk-meter-utility-icon {
+    @apply mb-1 flex h-10 w-10 items-center justify-center rounded-lg;
+  }
+
+  .bulk-meter-utility-icon svg {
+    @apply h-5 w-5;
+  }
+
+  .bulk-meter-utility-icon-water {
+    @apply bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300;
+  }
+
+  .bulk-meter-utility-card-active .bulk-meter-utility-icon-water {
+    @apply bg-sky-200 text-sky-800 dark:bg-sky-900 dark:text-sky-200;
+  }
+
+  .bulk-meter-utility-icon-electricity {
+    @apply bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300;
+  }
+
+  .bulk-meter-utility-card-active .bulk-meter-utility-icon-electricity {
+    @apply bg-amber-200 text-amber-800 dark:bg-amber-900 dark:text-amber-200;
+  }
+
+  .bulk-meter-utility-label {
+    @apply text-sm font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-utility-hint {
+    @apply text-xs text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-filters-row {
+    @apply grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_0.6fr_auto];
+  }
+
+  .bulk-meter-filter-building {
+    @apply sm:col-span-2 lg:col-span-1;
+  }
+
+  .bulk-meter-filter-year {
+    @apply max-w-[7rem];
+  }
+
+  .bulk-meter-load-btn {
+    @apply inline-flex items-center justify-center gap-2 self-end sm:col-span-2 lg:col-span-1;
+  }
+
+  .bulk-meter-load-spinner {
+    @apply inline-block h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white;
+  }
+
+  .bulk-meter-load-spinner-lg {
+    @apply h-8 w-8 border-indigo-200 border-t-indigo-600 dark:border-indigo-800 dark:border-t-indigo-400;
+  }
+
+  .bulk-meter-empty {
+    @apply flex flex-col items-center px-6 py-14 text-center;
+  }
+
+  .bulk-meter-empty-icon {
+    @apply mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 dark:bg-indigo-950/50 dark:text-indigo-400;
+  }
+
+  .bulk-meter-empty-icon svg {
+    @apply h-7 w-7;
+  }
+
+  .bulk-meter-empty-icon-muted {
+    @apply bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400;
+  }
+
+  .bulk-meter-empty-title {
+    @apply text-base font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-empty-text {
+    @apply mt-2 max-w-md text-sm text-zinc-600 dark:text-zinc-400;
+  }
+
+  .bulk-meter-loading {
+    @apply flex flex-col items-center justify-center gap-3 py-16;
+  }
+
+  .bulk-meter-loading-text {
+    @apply text-sm text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-stats {
+    @apply mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4;
+  }
+
+  .bulk-meter-stat-card {
+    @apply rounded-xl border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-900;
+  }
+
+  .bulk-meter-stat-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-stat-value {
+    @apply mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-stat-card-primary .bulk-meter-stat-value {
+    @apply text-indigo-700 dark:text-indigo-300;
+  }
+
+  .bulk-meter-stat-card-success .bulk-meter-stat-value {
+    @apply text-emerald-700 dark:text-emerald-400;
+  }
+
+  .bulk-meter-stat-card-warning .bulk-meter-stat-value {
+    @apply text-amber-700 dark:text-amber-400;
+  }
+
+  .bulk-meter-progress {
+    @apply mb-4 p-4 sm:p-5;
+  }
+
+  .bulk-meter-progress-meta {
+    @apply mb-3 flex items-start justify-between gap-3;
+  }
+
+  .bulk-meter-progress-title {
+    @apply text-sm font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-progress-sub {
+    @apply mt-0.5 text-xs text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-kbd-hint {
+    @apply inline-flex rounded border border-zinc-200 bg-zinc-100 px-1.5 py-0.5 font-mono text-[10px] font-medium text-zinc-600 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300;
+  }
+
+  .bulk-meter-progress-percent {
+    @apply text-2xl font-semibold tabular-nums text-indigo-700 dark:text-indigo-300;
+  }
+
+  .bulk-meter-progress-track {
+    @apply h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800;
+  }
+
+  .bulk-meter-progress-fill {
+    @apply h-full rounded-full transition-all duration-500 ease-out;
+  }
+
+  .bulk-meter-progress-fill-water {
+    @apply bg-gradient-to-r from-sky-400 to-cyan-500;
+  }
+
+  .bulk-meter-progress-fill-electricity {
+    @apply bg-gradient-to-r from-amber-400 to-orange-500;
+  }
+
+  .bulk-meter-summary {
+    @apply mt-3 text-sm font-medium;
+  }
+
+  .bulk-meter-summary-success {
+    @apply text-emerald-700 dark:text-emerald-400;
+  }
+
+  .bulk-meter-summary-warning {
+    @apply text-amber-700 dark:text-amber-400;
+  }
+
+  .bulk-meter-summary-error {
+    @apply text-red-600 dark:text-red-400;
+  }
+
+  .bulk-meter-table-shell {
+    @apply mb-0 overflow-hidden;
+  }
+
+  .bulk-meter-table-scroll {
+    @apply max-h-[min(62vh,36rem)] overflow-auto;
+  }
+
+  .bulk-meter-thead {
+    @apply sticky top-0 z-10 bg-zinc-50 shadow-[0_1px_0_0] shadow-zinc-200 dark:bg-zinc-900 dark:shadow-zinc-700;
+  }
+
+  .bulk-meter-thead th {
+    @apply px-3 py-3 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400 sm:px-4;
+  }
+
+  .bulk-meter-table {
+    @apply min-w-full text-sm;
+  }
+
+  .bulk-meter-row {
+    @apply border-b border-zinc-100 transition-colors duration-150 dark:border-zinc-800;
+  }
+
+  .bulk-meter-row:hover {
+    @apply bg-zinc-50/60 dark:bg-zinc-900/40;
+  }
+
+  .bulk-meter-row td {
+    @apply px-3 py-2.5 sm:px-4;
+  }
+
+  .bulk-meter-row-num {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-xs font-medium tabular-nums text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400;
+  }
+
+  .bulk-meter-unit {
+    @apply block font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-unit-floor {
+    @apply block text-xs text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-tenant-name {
+    @apply font-medium text-zinc-800 dark:text-zinc-200;
+  }
+
+  .bulk-meter-reading-pill {
+    @apply inline-flex min-w-[3rem] justify-center rounded-md px-2 py-1 text-sm font-medium tabular-nums;
+  }
+
+  .bulk-meter-reading-previous {
+    @apply bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400;
+  }
+
+  .bulk-meter-reading-saved {
+    @apply bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300;
+  }
+
+  .bulk-meter-input {
+    @apply w-full min-w-[5.5rem] max-w-[7rem] rounded-lg border border-zinc-300 bg-white px-3 py-2 text-right text-sm font-semibold tabular-nums text-zinc-900 shadow-sm transition-all placeholder:font-normal placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/25 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500 dark:focus:border-indigo-400;
+  }
+
+  .bulk-meter-input-filled {
+    @apply border-indigo-300 bg-indigo-50/50 dark:border-indigo-700 dark:bg-indigo-950/30;
+  }
+
+  .bulk-meter-input-error {
+    @apply border-red-400 bg-red-50 ring-2 ring-red-200 dark:border-red-500 dark:bg-red-950/30 dark:ring-red-900;
+  }
+
+  .bulk-meter-consumption {
+    @apply inline-flex min-w-[2.5rem] justify-end font-semibold tabular-nums;
+  }
+
+  .bulk-meter-consumption-ok {
+    @apply text-emerald-700 dark:text-emerald-400;
+  }
+
+  .bulk-meter-consumption-high {
+    @apply text-amber-700 dark:text-amber-400;
+  }
+
+  .bulk-meter-consumption-empty {
+    @apply text-zinc-400;
+  }
+
+  .bulk-meter-status-pending {
+    @apply text-xs text-zinc-400 dark:text-zinc-500;
+  }
+
+  .bulk-meter-row-error {
+    @apply bg-red-50/90 dark:bg-red-950/25;
+  }
+
+  .bulk-meter-row-warning {
+    @apply bg-amber-50/80 dark:bg-amber-950/20;
+  }
+
+  .bulk-meter-row-recorded {
+    @apply bg-zinc-50/50 opacity-80 dark:bg-zinc-900/30;
+  }
+
+  .bulk-meter-row-ready {
+    @apply bg-indigo-50/40 dark:bg-indigo-950/20;
+  }
+
+  .bulk-meter-sticky-bar {
+    @apply pointer-events-none fixed inset-x-0 bottom-0 z-30 px-4 pb-4 lg:pl-[calc(15rem+1rem)];
+  }
+
+  .bulk-meter-sticky-inner {
+    @apply pointer-events-auto mx-auto flex max-w-7xl flex-col gap-3 rounded-xl border border-zinc-200 bg-white/95 p-4 shadow-lg backdrop-blur-md sm:flex-row sm:items-center sm:justify-between dark:border-zinc-700 dark:bg-zinc-900/95;
+  }
+
+  .bulk-meter-sticky-title {
+    @apply text-sm font-semibold text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-sticky-sub {
+    @apply mt-0.5 text-xs text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-save-btn {
+    @apply w-full shrink-0 sm:w-auto;
+  }
+
+  .bulk-meter-confirm-lead {
+    @apply text-sm text-zinc-600 dark:text-zinc-400;
+  }
+
+  .bulk-meter-confirm-stats {
+    @apply mt-4 space-y-2 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-900/50;
+  }
+
+  .bulk-meter-confirm-stats li {
+    @apply flex items-center justify-between text-sm;
+  }
+
+  .bulk-meter-confirm-stats li span {
+    @apply text-zinc-500 dark:text-zinc-400;
+  }
+
+  .bulk-meter-confirm-stats li strong {
+    @apply tabular-nums text-zinc-900 dark:text-zinc-100;
+  }
+
+  .bulk-meter-confirm-note {
+    @apply mt-3 text-xs text-amber-700 dark:text-amber-400;
+  }
+
   .theme-toggle {
     @apply inline-flex items-center rounded-lg border border-zinc-200 bg-zinc-50/80 p-0.5 dark:border-zinc-700 dark:bg-zinc-800/80;
   }
@@ -793,7 +1175,15 @@ body {
   }
 
   .searchable-select-panel {
-    @apply absolute z-40 mt-1 max-h-64 w-full overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900;
+    @apply max-h-64 w-full overflow-hidden rounded-md border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900;
+  }
+
+  .searchable-select-panel-teleport {
+    @apply shadow-xl ring-1 ring-black/5 dark:ring-white/10;
+  }
+
+  .searchable-select-open {
+    @apply relative z-20;
   }
 
   .searchable-select-list {

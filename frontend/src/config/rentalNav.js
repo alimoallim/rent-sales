@@ -22,6 +22,7 @@ export const rentalNavSections = [
       { to: '/rental/payments', label: 'Payments', icon: 'payments' },
       { to: '/rental/water-bills', label: 'Water', icon: 'water' },
       { to: '/rental/electricity-bills', label: 'Electricity', icon: 'electricity' },
+      { to: '/rental/bulk-meter-readings', label: 'Bulk readings', icon: 'batches' },
     ],
   },
   {

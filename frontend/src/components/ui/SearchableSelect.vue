@@ -1,6 +1,6 @@
 <template>
   <div ref="root" class="searchable-select" :class="{ 'searchable-select-open': open }">
-    <div class="searchable-select-control">
+    <div ref="controlRef" class="searchable-select-control">
       <input
         ref="inputRef"
         type="text"
@@ -40,30 +40,37 @@
       />
     </div>
 
-    <div v-if="open" class="searchable-select-panel">
-      <p v-if="filteredOptions.length === 0" class="searchable-select-empty">No matches found</p>
-      <ul
-        v-else
-        :id="listboxId"
-        class="searchable-select-list"
-        role="listbox"
+    <Teleport to="body">
+      <div
+        v-if="open"
+        ref="panelRef"
+        class="searchable-select-panel searchable-select-panel-teleport"
+        :style="panelStyle"
       >
-        <li
-          v-for="(option, index) in filteredOptions"
-          :id="`${listboxId}-option-${index}`"
-          :key="String(option.value)"
-          role="option"
-          class="searchable-select-option"
-          :class="{ 'searchable-select-option-active': index === highlightedIndex }"
-          :aria-selected="isSelected(option)"
-          @mousedown.prevent="selectOption(option)"
-          @mouseenter="highlightedIndex = index"
+        <p v-if="filteredOptions.length === 0" class="searchable-select-empty">No matches found</p>
+        <ul
+          v-else
+          :id="listboxId"
+          class="searchable-select-list"
+          role="listbox"
         >
-          <span class="searchable-select-option-label">{{ option.label }}</span>
-          <span v-if="option.hint" class="searchable-select-option-hint">{{ option.hint }}</span>
-        </li>
-      </ul>
-    </div>
+          <li
+            v-for="(option, index) in filteredOptions"
+            :id="`${listboxId}-option-${index}`"
+            :key="String(option.value)"
+            role="option"
+            class="searchable-select-option"
+            :class="{ 'searchable-select-option-active': index === highlightedIndex }"
+            :aria-selected="isSelected(option)"
+            @mousedown.prevent="selectOption(option)"
+            @mouseenter="highlightedIndex = index"
+          >
+            <span class="searchable-select-option-label">{{ option.label }}</span>
+            <span v-if="option.hint" class="searchable-select-option-hint">{{ option.hint }}</span>
+          </li>
+        </ul>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -83,10 +90,13 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const root = ref(null)
+const controlRef = ref(null)
+const panelRef = ref(null)
 const inputRef = ref(null)
 const open = ref(false)
 const query = ref('')
 const highlightedIndex = ref(0)
+const panelStyle = ref({})
 const listboxId = `searchable-select-${Math.random().toString(36).slice(2, 9)}`
 
 const selectedOption = computed(() =>
@@ -131,12 +141,61 @@ watch(filteredOptions, (options) => {
   }
 })
 
+watch(open, (isOpen) => {
+  if (isOpen) {
+    nextTick(() => {
+      updatePanelPosition()
+      bindPositionListeners()
+    })
+  } else {
+    unbindPositionListeners()
+  }
+})
+
 function valuesMatch(a, b) {
   return String(a) === String(b)
 }
 
 function isSelected(option) {
   return valuesMatch(option.value, props.modelValue)
+}
+
+function updatePanelPosition() {
+  const control = controlRef.value
+  if (!control) return
+
+  const rect = control.getBoundingClientRect()
+  const viewportPadding = 8
+  const maxHeight = 256
+  const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+  const spaceAbove = rect.top - viewportPadding
+  const openUpward = spaceBelow < 180 && spaceAbove > spaceBelow
+
+  const availableHeight = Math.min(maxHeight, openUpward ? spaceAbove : spaceBelow)
+
+  panelStyle.value = {
+    position: 'fixed',
+    left: `${Math.max(viewportPadding, Math.min(rect.left, window.innerWidth - rect.width - viewportPadding))}px`,
+    width: `${rect.width}px`,
+    top: openUpward ? 'auto' : `${rect.bottom + 4}px`,
+    bottom: openUpward ? `${window.innerHeight - rect.top + 4}px` : 'auto',
+    maxHeight: `${Math.max(120, availableHeight)}px`,
+    zIndex: 9999,
+  }
+}
+
+function onPositionChange() {
+  if (open.value) updatePanelPosition()
+}
+
+function bindPositionListeners() {
+  window.addEventListener('resize', onPositionChange)
+  window.addEventListener('scroll', onPositionChange, true)
+}
+
+function unbindPositionListeners() {
+  window.removeEventListener('resize', onPositionChange)
+  window.removeEventListener('scroll', onPositionChange, true)
 }
 
 function onFocus() {
@@ -174,6 +233,7 @@ function onInput(event) {
   query.value = event.target.value
   open.value = true
   highlightedIndex.value = 0
+  nextTick(updatePanelPosition)
 }
 
 function selectOption(option) {
@@ -223,9 +283,10 @@ function onKeydown(event) {
 }
 
 function onDocumentClick(event) {
-  if (!root.value?.contains(event.target)) {
-    closeDropdown()
-  }
+  const target = event.target
+  if (root.value?.contains(target)) return
+  if (panelRef.value?.contains(target)) return
+  closeDropdown()
 }
 
 onMounted(() => {
@@ -234,5 +295,6 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
+  unbindPositionListeners()
 })
 </script>

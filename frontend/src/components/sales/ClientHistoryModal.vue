@@ -13,7 +13,7 @@
     <p v-else-if="error" class="alert-error">{{ error }}</p>
 
     <template v-else>
-      <div id="client-history-print-area">
+      <div>
         <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
             <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Agreed unit price</p>
@@ -90,6 +90,7 @@ import AppDialog from '../ui/AppDialog.vue'
 import ClientPaymentHistory from './ClientPaymentHistory.vue'
 import { fetchClient, fetchClientPaymentSummary, fetchPayments } from '../../api/sales'
 import { formatMoney } from '../../utils/money'
+import { escapeHtml, printHtmlDocument } from '../../utils/print'
 
 const props = defineProps({
   clientId: { type: [Number, String], default: null },
@@ -155,48 +156,124 @@ async function loadClientData(clientId) {
   }
 }
 
+function formatPaymentDate(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('en-KE', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function buildPaymentTableHtml() {
+  const active = payments.value.filter((payment) => payment.status === 'active')
+
+  if (active.length === 0) {
+    return '<div class="empty">No installment payments recorded yet.</div>'
+  }
+
+  const rows = active
+    .map(
+      (payment, index) => `
+        <tr>
+          <td class="muted">${index + 1}</td>
+          <td>${escapeHtml(formatPaymentDate(payment.paid_at))}</td>
+          <td class="text-right">${escapeHtml(formatMoney(payment.amount, 'sales'))}</td>
+          <td class="text-right">${Number(payment.discount) > 0 ? escapeHtml(formatMoney(payment.discount, 'sales')) : '—'}</td>
+          <td>${escapeHtml(payment.invoice_reference || '—')}</td>
+          <td>${escapeHtml(payment.bank || '—')}</td>
+          <td class="text-right">${escapeHtml(payment.status)}</td>
+        </tr>
+      `,
+    )
+    .join('')
+
+  const totalAmount = active.reduce((sum, payment) => sum + Number(payment.amount || 0), 0)
+  const totalDiscount = active.reduce((sum, payment) => sum + Number(payment.discount || 0), 0)
+
+  return `
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Date</th>
+          <th class="text-right">Amount</th>
+          <th class="text-right">Discount</th>
+          <th>Reference</th>
+          <th>Bank</th>
+          <th class="text-right">Status</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+      <tfoot>
+        <tr>
+          <td colspan="2" class="text-right">Installment total</td>
+          <td class="text-right">${escapeHtml(formatMoney(totalAmount, 'sales'))}</td>
+          <td class="text-right">${totalDiscount > 0 ? escapeHtml(formatMoney(totalDiscount, 'sales')) : '—'}</td>
+          <td colspan="3"></td>
+        </tr>
+      </tfoot>
+    </table>
+    ${paymentsTruncated.value ? `<p class="footer-note">Showing the most recent ${payments.value.length} payments.</p>` : ''}
+  `
+}
+
 function printStatement() {
-  const area = document.getElementById('client-history-print-area')
-  if (!area) return
+  if (!client.value || !summary.value) return
 
-  const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=700')
-  if (!printWindow) return
-
-  printWindow.document.write(`
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>${client.value?.name || 'Client'} — Sale statement</title>
-        <style>
-          body { font-family: system-ui, sans-serif; padding: 1.5rem; color: #18181b; }
-          h1 { font-size: 1.25rem; margin: 0 0 0.25rem; }
-          .meta { margin: 0 0 1rem; color: #52525b; font-size: 0.875rem; }
-          .summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-bottom: 1.25rem; }
-          .card { border: 1px solid #e4e4e7; border-radius: 0.375rem; padding: 0.75rem; }
-          .label { font-size: 0.7rem; text-transform: uppercase; color: #71717a; }
-          .value { font-size: 1rem; font-weight: 600; margin-top: 0.25rem; }
-          table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
-          th, td { border-bottom: 1px solid #e4e4e7; padding: 0.5rem 0.75rem; text-align: left; }
-          th { font-size: 0.75rem; text-transform: uppercase; color: #71717a; }
-          .text-right { text-align: right; }
-        </style>
-      </head>
-      <body>
-        <h1>${client.value?.name || ''}</h1>
-        <p class="meta">${modalSubtitle.value} · Sold ${soldDateLabel.value}</p>
-        <div class="summary">
-          <div class="card"><div class="label">Agreed unit price</div><div class="value">${formatMoney(summary.value?.agreed_sale_price, 'sales')}</div></div>
-          <div class="card"><div class="label">Total paid</div><div class="value">${formatMoney(summary.value?.paid_total, 'sales')}</div></div>
-          <div class="card"><div class="label">Outstanding</div><div class="value">${formatMoney(summary.value?.balance, 'sales')}</div></div>
-          <div class="card"><div class="label">Deposit</div><div class="value">${formatMoney(summary.value?.deposit, 'sales')}</div></div>
+  const balance = Number(summary.value.balance || 0)
+  const progress =
+    paidPercent.value !== null
+      ? `
+        <div class="progress">
+          <div class="progress-meta">
+            <span>Payment progress</span>
+            <span>${paidPercent.value}% of sale price</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" style="width: ${Math.min(paidPercent.value, 100)}%"></div>
+          </div>
         </div>
-        ${area.innerHTML}
-      </body>
-    </html>
-  `)
-  printWindow.document.close()
-  printWindow.focus()
-  printWindow.print()
+      `
+      : ''
+
+  const metaParts = [
+    client.value.building_name,
+    client.value.unit_label ? `Unit ${client.value.unit_label}` : null,
+    client.value.voucher_number ? `Voucher ${client.value.voucher_number}` : null,
+    client.value.phone || null,
+  ].filter(Boolean)
+
+  const body = `
+    <h1>${escapeHtml(client.value.name || props.clientName)}</h1>
+    <p class="meta">${escapeHtml(metaParts.join(' · '))} · Sold ${escapeHtml(soldDateLabel.value)}</p>
+    <div class="summary">
+      <div class="card">
+        <div class="label">Agreed unit price</div>
+        <div class="value">${escapeHtml(formatMoney(summary.value.agreed_sale_price, 'sales'))}</div>
+      </div>
+      <div class="card">
+        <div class="label">Total paid</div>
+        <div class="value value-success">${escapeHtml(formatMoney(summary.value.paid_total, 'sales'))}</div>
+      </div>
+      <div class="card">
+        <div class="label">Outstanding</div>
+        <div class="value ${balance > 0 ? 'value-warning' : 'value-success'}">${escapeHtml(formatMoney(summary.value.balance, 'sales'))}</div>
+      </div>
+      <div class="card">
+        <div class="label">Deposit</div>
+        <div class="value">${escapeHtml(formatMoney(summary.value.deposit, 'sales'))}</div>
+      </div>
+    </div>
+    ${progress}
+    <h2>Payment history</h2>
+    ${buildPaymentTableHtml()}
+  `
+
+  printHtmlDocument({
+    title: `${client.value.name || props.clientName} — Sale statement`,
+    body,
+  })
 }
 
 function onClose() {

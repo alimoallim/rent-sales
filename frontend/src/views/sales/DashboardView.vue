@@ -33,10 +33,10 @@
             <div class="sales-dashboard-pipeline-step">
               <p class="sales-dashboard-hero-label">Available inventory</p>
               <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.available_list_value, 'sales') }}</p>
-              <p class="text-xs text-indigo-200">{{ data.inventory.available_units }} units for sale</p>
+              <p class="sales-dashboard-pipeline-hint">{{ data.inventory.available_units }} units for sale</p>
               <div class="sales-dashboard-pipeline-bar">
                 <div
-                  class="sales-dashboard-pipeline-fill"
+                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-available"
                   :style="{ width: `${pipelinePercent(data.pipeline.available_list_value)}%` }"
                 />
               </div>
@@ -44,10 +44,10 @@
             <div class="sales-dashboard-pipeline-step">
               <p class="sales-dashboard-hero-label">Agreed sales</p>
               <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.agreed_sale_value, 'sales') }}</p>
-              <p class="text-xs text-indigo-200">{{ data.inventory.sold_units }} units sold</p>
+              <p class="sales-dashboard-pipeline-hint">{{ data.inventory.sold_units }} units sold</p>
               <div class="sales-dashboard-pipeline-bar">
                 <div
-                  class="sales-dashboard-pipeline-fill"
+                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-agreed"
                   :style="{ width: `${pipelinePercent(data.pipeline.agreed_sale_value)}%` }"
                 />
               </div>
@@ -55,10 +55,10 @@
             <div class="sales-dashboard-pipeline-step">
               <p class="sales-dashboard-hero-label">Cash collected</p>
               <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.collected_total, 'sales') }}</p>
-              <p class="text-xs text-indigo-200">{{ data.portfolio.clients_paid_up }} clients fully paid</p>
+              <p class="sales-dashboard-pipeline-hint">{{ data.portfolio.clients_paid_up }} clients fully paid</p>
               <div class="sales-dashboard-pipeline-bar">
                 <div
-                  class="sales-dashboard-pipeline-fill"
+                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-collected"
                   :style="{ width: `${pipelinePercent(data.pipeline.collected_total)}%` }"
                 />
               </div>
