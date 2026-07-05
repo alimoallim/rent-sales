@@ -1,19 +1,16 @@
 <template>
-  <section class="dashboard-page">
-    <header class="dashboard-page-header">
-      <div>
-        <h2 class="page-title">Rental dashboard</h2>
-        <p class="page-subtitle">
-          Operational snapshot for {{ data?.period?.label ?? 'this month' }}.
-          <span v-if="data?.generated_at" class="text-zinc-400">
-            Updated {{ formatRelativeTime(data.generated_at) }}
-          </span>
-        </p>
-      </div>
-      <button type="button" class="btn-secondary" :disabled="loading" @click="load">
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
-    </header>
+  <section>
+    <PageHeader
+      title="Rental dashboard"
+      :subtitle="dashboardSubtitle"
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Dashboard' }]"
+    >
+      <template #actions>
+        <button type="button" class="btn-secondary" :disabled="loading" @click="load">
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </template>
+    </PageHeader>
 
     <p v-if="error" class="alert-error">{{ error }}</p>
 
@@ -159,7 +156,11 @@
 
       <div class="dashboard-grid-2">
         <DashboardPanel title="Top debtors" subtitle="Highest outstanding balances" action-to="/rental/tenants">
-          <div v-if="data.top_debtors.length === 0" class="empty-state">All tenants are paid up.</div>
+          <EmptyState
+            v-if="data.top_debtors.length === 0"
+            title="All tenants are paid up"
+            description="No outstanding balances at this time."
+          />
           <ul v-else class="dashboard-list">
             <li v-for="debtor in data.top_debtors" :key="debtor.tenant_id" class="dashboard-list-item">
               <div class="min-w-0">
@@ -179,7 +180,7 @@
         </DashboardPanel>
 
         <DashboardPanel title="Recent payments" subtitle="Latest rent collections" action-to="/rental/payments">
-          <div v-if="data.recent_payments.length === 0" class="empty-state">No payments recorded yet.</div>
+          <EmptyState v-if="data.recent_payments.length === 0" title="No payments yet" description="Payments will appear here once recorded." />
           <ul v-else class="dashboard-list">
             <li v-for="payment in data.recent_payments" :key="payment.payment_id" class="dashboard-list-item">
               <div class="min-w-0">
@@ -197,7 +198,7 @@
 
       <div class="dashboard-grid-2">
         <DashboardPanel title="Building performance" subtitle="Occupancy and outstanding by property" action-to="/rental/buildings">
-          <div v-if="data.building_summary.length === 0" class="empty-state">No buildings configured.</div>
+          <EmptyState v-if="data.building_summary.length === 0" title="No buildings" description="Add a building to see performance here." />
           <div v-else class="overflow-x-auto">
             <table class="dashboard-table">
               <thead>
@@ -225,7 +226,7 @@
         </DashboardPanel>
 
         <DashboardPanel title="Recent move-outs" subtitle="Latest tenant departures" action-to="/rental/tenants">
-          <div v-if="data.recent_move_outs.length === 0" class="empty-state">No move-outs recorded.</div>
+          <EmptyState v-if="data.recent_move_outs.length === 0" title="No move-outs" description="Recent departures will appear here." />
           <ul v-else class="dashboard-list">
             <li v-for="moveOut in data.recent_move_outs" :key="moveOut.id" class="dashboard-list-item">
               <div class="min-w-0">
@@ -244,23 +245,30 @@
       </div>
     </template>
 
-    <div v-else-if="loading" class="dashboard-loading">
-      <p class="text-sm text-zinc-500 dark:text-zinc-400">Loading dashboard…</p>
-    </div>
+    <DashboardSkeleton v-else-if="loading" />
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import PageHeader from '../../components/PageHeader.vue'
 import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard.vue'
 import DashboardActionPanel from '../../components/dashboard/DashboardActionPanel.vue'
 import DashboardPanel from '../../components/dashboard/DashboardPanel.vue'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
 import { fetchDashboard } from '../../api/rental'
 import { formatMoney } from '../../utils/money'
 
 const data = ref(null)
 const loading = ref(false)
 const error = ref('')
+
+const dashboardSubtitle = computed(() => {
+  const period = data.value?.period?.label ?? 'this month'
+  const updated = data.value?.generated_at ? ` · Updated ${formatRelativeTime(data.value.generated_at)}` : ''
+  return `Operational snapshot for ${period}${updated}`
+})
 
 const breakdownItems = computed(() => {
   if (!data.value) return []

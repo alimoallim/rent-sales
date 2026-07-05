@@ -8,6 +8,7 @@ use App\Http\Requests\Rental\StoreRentalUnitRequest;
 use App\Http\Requests\Rental\UpdateRentalUnitRequest;
 use App\Http\Resources\RentalUnitResource;
 use App\Models\RentalUnit;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -23,13 +24,15 @@ class RentalUnitController extends Controller
             ->when($request->integer('building_id'), fn ($query, $buildingId) => $query->where('rental_building_id', $buildingId))
             ->when($request->string('status')->toString(), fn ($query, $status) => $query->where('status', $status));
 
+        ListQuery::applySearch($query, $request, ['house_number', 'floor', 'description'], ['building' => 'name']);
+
         $total = (clone $query)->count();
         $vacant = (clone $query)->where('status', RentalUnitStatus::Vacant)->count();
         $occupied = (clone $query)->where('status', RentalUnitStatus::Occupied)->count();
 
         $units = $query
             ->orderBy('house_number')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return RentalUnitResource::collection($units)->additional([
             'summary' => [

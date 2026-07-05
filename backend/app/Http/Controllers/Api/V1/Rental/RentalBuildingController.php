@@ -7,19 +7,24 @@ use App\Http\Requests\Rental\StoreRentalBuildingRequest;
 use App\Http\Requests\Rental\UpdateRentalBuildingRequest;
 use App\Http\Resources\RentalBuildingResource;
 use App\Models\RentalBuilding;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class RentalBuildingController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', RentalBuilding::class);
 
-        $buildings = RentalBuilding::query()
-            ->withCount('units')
+        $query = RentalBuilding::query()->withCount('units');
+
+        ListQuery::applySearch($query, $request, ['name']);
+
+        $buildings = $query
             ->orderBy('name')
-            ->paginate(25);
+            ->paginate(ListQuery::perPage($request));
 
         return RentalBuildingResource::collection($buildings);
     }

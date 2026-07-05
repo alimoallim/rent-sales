@@ -21,7 +21,7 @@ class StoreTenantElectricityBillRequest extends FormRequest
             'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id'],
             'billing_month' => ['required', 'integer', 'min:1', 'max:12'],
             'billing_year' => ['required', 'integer', 'min:2000', 'max:2100'],
-            'previous_reading' => ['required', 'integer', 'min:0'],
+            'previous_reading' => ['nullable', 'integer', 'min:0'],
             'current_reading' => ['required', 'integer', 'min:0'],
             'rate' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'fixed_fee' => ['nullable', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],

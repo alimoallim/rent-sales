@@ -8,6 +8,7 @@ use App\Http\Resources\BuildingElectricityBillResource;
 use App\Http\Resources\BuildingWaterUtilityBillResource;
 use App\Models\BuildingElectricityBill;
 use App\Models\BuildingWaterUtilityBill;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Validation\ValidationException;
@@ -18,12 +19,16 @@ class BuildingUtilityController extends Controller
     {
         $this->authorize('viewAny', BuildingWaterUtilityBill::class);
 
-        $bills = BuildingWaterUtilityBill::query()
+        $query = BuildingWaterUtilityBill::query()
             ->with('building')
-            ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
+            ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id));
+
+        ListQuery::applySearch($query, $request, [], ['building' => 'name']);
+
+        $bills = $query
             ->orderByDesc('billing_year')
             ->orderByDesc('billing_month')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return BuildingWaterUtilityBillResource::collection($bills);
     }
@@ -58,12 +63,16 @@ class BuildingUtilityController extends Controller
     {
         $this->authorize('viewAny', BuildingElectricityBill::class);
 
-        $bills = BuildingElectricityBill::query()
+        $query = BuildingElectricityBill::query()
             ->with('building')
-            ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
+            ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id));
+
+        ListQuery::applySearch($query, $request, [], ['building' => 'name']);
+
+        $bills = $query
             ->orderByDesc('billing_year')
             ->orderByDesc('billing_month')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return BuildingElectricityBillResource::collection($bills);
     }

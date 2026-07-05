@@ -1,16 +1,36 @@
 <template>
   <section>
-    <PageHeader title="Users" subtitle="Manage staff accounts and module access.">
+    <PageHeader
+      title="Users"
+      subtitle="Manage staff accounts and module access."
+      :breadcrumbs="[{ label: 'Administration' }, { label: 'Users' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">Add user</button>
       </template>
     </PageHeader>
 
-    <ResponsiveDataList
-      :items="users"
+    <DataTable
+      v-model:search="search"
+      server-side
+      :items="items"
       :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
       empty-message="No users yet."
+      @search="onSearchChange"
+      @page-change="goToPage"
+      @per-page-change="setPerPage"
     >
+      <template #cell-role="{ item }">
+        {{ roleLabels[item.role] ?? item.role }}
+      </template>
+      <template #cell-status="{ item }">
+        <StatusBadge :variant="item.status === 'active' ? 'success' : 'neutral'" :label="item.status === 'active' ? 'Active' : 'Inactive'" />
+      </template>
+      <template #cell-access="{ item }">
+        {{ formatAccess(item) }}
+      </template>
       <template #actions="{ item }">
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
         <button
@@ -22,63 +42,58 @@
           Delete
         </button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
-    <AppDialog v-model:open="showForm" :title="editing ? 'Edit user' : 'Add user'" size="md">
+    <AppDialog v-model:open="showForm" :title="editing ? 'Edit user' : 'Add user'" size="md" :close-on-backdrop="false">
       <div class="space-y-3">
-        <label class="label-field">
-          Full name
+        <FormField label="Full name" required>
           <input v-model="form.name" class="input-field" required />
-        </label>
+        </FormField>
 
-        <label class="label-field">
-          Username
+        <FormField label="Username" required>
           <input v-model="form.username" class="input-field" required autocomplete="off" />
-        </label>
+        </FormField>
 
-        <label class="label-field">
-          Email
+        <FormField label="Email">
           <input v-model="form.email" type="email" class="input-field" autocomplete="off" />
-        </label>
+        </FormField>
 
-        <label class="label-field">
-          Role
+        <FormField label="Role" required>
           <select v-model="form.role" class="input-field" required>
             <option value="admin">Administrator (rental + sales)</option>
             <option value="rental">Rental staff</option>
             <option value="sales">Sales staff</option>
           </select>
-        </label>
+        </FormField>
 
         <label v-if="form.role === 'rental'" class="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-          <input v-model="form.is_manager" type="checkbox" class="rounded border-zinc-300" />
+          <input v-model="form.is_manager" type="checkbox" class="h-4 w-4 rounded border-zinc-300" />
           Manager (can approve charge batches)
         </label>
 
-        <label class="label-field">
-          Status
+        <FormField label="Status">
           <select v-model="form.status" class="input-field">
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
-        </label>
+        </FormField>
 
-        <label class="label-field">
-          {{ editing ? 'New password (leave blank to keep current)' : 'Password' }}
+        <FormField :label="editing ? 'New password (leave blank to keep current)' : 'Password'" :required="!editing">
           <input v-model="form.password" type="password" class="input-field" :required="!editing" autocomplete="new-password" />
-        </label>
+        </FormField>
 
-        <label v-if="form.password" class="label-field">
-          Confirm password
+        <FormField v-if="form.password" label="Confirm password" required>
           <input v-model="form.password_confirmation" type="password" class="input-field" :required="!!form.password" autocomplete="new-password" />
-        </label>
+        </FormField>
       </div>
 
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
 
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -88,12 +103,23 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FormField from '../../components/ui/FormField.vue'
+import StatusBadge from '../../components/ui/StatusBadge.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import { useAuthStore } from '../../stores/auth'
 import { createUser, deleteUser, fetchUsers, updateUser } from '../../api/users'
 
+const { confirm } = useConfirm()
+const toast = useToast()
 const auth = useAuthStore()
-const users = ref([])
+
+const { items, loading, search, pagination, load, reload, goToPage, setPerPage, onSearchChange } = usePaginatedList(
+  (params) => fetchUsers(params),
+)
+const saving = ref(false)
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
@@ -119,28 +145,17 @@ const roleLabels = {
 const columns = [
   { key: 'name', label: 'Name', cardTitle: true },
   { key: 'username', label: 'Username', mobileCard: true },
-  {
-    key: 'role',
-    label: 'Role',
-    mobileCard: true,
-    format: (row) => roleLabels[row.role] ?? row.role,
-  },
-  {
-    key: 'status',
-    label: 'Status',
-    format: (row) => (row.status === 'active' ? 'Active' : 'Inactive'),
-  },
-  {
-    key: 'access',
-    label: 'Module access',
-    format: (row) => {
-      const parts = []
-      if (row.can_access_rental) parts.push('Rental')
-      if (row.can_access_sales) parts.push('Sales')
-      return parts.join(', ') || '—'
-    },
-  },
+  { key: 'role', label: 'Role', mobileCard: true },
+  { key: 'status', label: 'Status' },
+  { key: 'access', label: 'Module access' },
 ]
+
+function formatAccess(row) {
+  const parts = []
+  if (row.can_access_rental) parts.push('Rental')
+  if (row.can_access_sales) parts.push('Sales')
+  return parts.join(', ') || '—'
+}
 
 function resetForm() {
   form.name = ''
@@ -151,11 +166,6 @@ function resetForm() {
   form.is_manager = false
   form.password = ''
   form.password_confirmation = ''
-}
-
-async function load() {
-  const response = await fetchUsers()
-  users.value = response.data
 }
 
 function openCreate() {
@@ -203,15 +213,18 @@ function buildPayload() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     const payload = buildPayload()
     if (editing.value) {
       await updateUser(editing.value.id, payload)
+      toast.success('User updated.')
     } else {
       await createUser(payload)
+      toast.success('User created.')
     }
     closeForm()
-    await load()
+    await reload()
   } catch (e) {
     const validation = e.response?.data?.errors
     if (validation) {
@@ -219,16 +232,25 @@ async function save() {
     } else {
       error.value = e.response?.data?.message || 'Could not save user.'
     }
+  } finally {
+    saving.value = false
   }
 }
 
 async function remove(user) {
-  if (!confirm(`Delete ${user.name}?`)) return
+  const ok = await confirm({
+    title: 'Delete user',
+    message: `Delete ${user.name}?`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await deleteUser(user.id)
-    await load()
+    toast.success('User deleted.')
+    await reload()
   } catch (e) {
-    alert(e.response?.data?.message || 'Could not delete user.')
+    toast.error(e.response?.data?.message || 'Could not delete user.')
   }
 }
 

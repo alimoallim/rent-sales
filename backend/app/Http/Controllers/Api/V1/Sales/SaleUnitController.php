@@ -11,6 +11,7 @@ use App\Http\Resources\SaleUnitResource;
 use App\Models\Client;
 use App\Models\SaleUnit;
 use App\Services\Sales\ClientBalanceCalculator;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -27,6 +28,8 @@ class SaleUnitController extends Controller
             ->with(['building', 'saleClient'])
             ->when($request->integer('building_id'), fn ($query, $buildingId) => $query->where('sale_building_id', $buildingId))
             ->when($request->string('status')->toString(), fn ($query, $status) => $query->where('status', $status));
+
+        ListQuery::applySearch($query, $request, ['house_number', 'floor', 'description'], ['building' => 'name']);
 
         $total = (clone $query)->count();
         $available = (clone $query)->where('status', SaleUnitStatus::Available)->count();
@@ -55,7 +58,7 @@ class SaleUnitController extends Controller
 
         $units = $query
             ->orderBy('house_number')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return SaleUnitResource::collection($units)->additional([
             'summary' => [

@@ -25,6 +25,7 @@ class StoreBulkMeterReadingsRequest extends FormRequest
             'readings' => ['required', 'array', 'min:1'],
             'readings.*.tenant_id' => ['required', 'integer', 'exists:tenants,id'],
             'readings.*.current_reading' => ['nullable', 'integer', 'min:0'],
+            'readings.*.previous_reading' => ['nullable', 'integer', 'min:0'],
         ];
     }
 }

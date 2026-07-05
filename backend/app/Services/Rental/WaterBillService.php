@@ -13,6 +13,7 @@ class WaterBillService
 
     public function __construct(
         private readonly ChargeBatchUtilitySyncService $utilitySync,
+        private readonly MeterReadingResolver $meterReadingResolver,
     ) {}
 
     /**
@@ -38,6 +39,17 @@ class WaterBillService
     {
         $this->assertUniquePeriod($data['tenant_id'], $data['billing_month'], $data['billing_year']);
 
+        $previousReading = $this->meterReadingResolver->resolvePreviousReading(
+            TenantWaterBill::class,
+            (int) $data['tenant_id'],
+            (int) $data['billing_month'],
+            (int) $data['billing_year'],
+            array_key_exists('previous_reading', $data) ? (int) $data['previous_reading'] : null,
+            (int) $data['current_reading'],
+        );
+
+        $data['previous_reading'] = $previousReading;
+
         $calculated = $this->calculateAmounts($data);
         $amount = $data['amount'] ?? $calculated['amount'];
 
@@ -61,6 +73,18 @@ class WaterBillService
      */
     public function update(TenantWaterBill $bill, array $data): TenantWaterBill
     {
+        $context = $this->meterReadingResolver->context(
+            TenantWaterBill::class,
+            $bill->tenant_id,
+            $bill->billing_month,
+            $bill->billing_year,
+        );
+
+        if ($context['previous_reading_locked']) {
+            unset($data['previous_reading']);
+            $data['previous_reading'] = $context['previous_reading'];
+        }
+
         $calculated = $this->calculateAmounts($data);
         $amount = $data['amount'] ?? $calculated['amount'];
 

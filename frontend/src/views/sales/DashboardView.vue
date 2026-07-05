@@ -1,70 +1,49 @@
 <template>
-  <section class="dashboard-page sales-dashboard-page">
-    <header class="dashboard-page-header">
-      <div>
-        <h2 class="page-title">Sales dashboard</h2>
-        <p class="page-subtitle">
-          Portfolio and pipeline snapshot for {{ data?.period?.label ?? 'this month' }}.
-          <span v-if="data?.generated_at" class="text-zinc-400">
-            Updated {{ formatRelativeTime(data.generated_at) }}
-          </span>
-        </p>
-      </div>
-      <button type="button" class="btn-secondary" :disabled="loading" @click="load">
-        {{ loading ? 'Refreshing…' : 'Refresh' }}
-      </button>
-    </header>
+  <section>
+    <PageHeader
+      title="Sales dashboard"
+      :subtitle="dashboardSubtitle"
+      :breadcrumbs="[{ label: 'Sales', to: '/sales' }, { label: 'Dashboard' }]"
+    >
+      <template #actions>
+        <button type="button" class="btn-secondary" :disabled="loading" @click="load">
+          {{ loading ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </template>
+    </PageHeader>
 
     <p v-if="error" class="alert-error">{{ error }}</p>
 
     <template v-if="data">
-      <div class="sales-dashboard-hero">
-        <div class="sales-dashboard-hero-grid">
-          <div>
-            <p class="sales-dashboard-hero-label">Portfolio collection rate</p>
-            <p class="sales-dashboard-hero-value">{{ data.portfolio.collection_rate }}%</p>
-            <p class="sales-dashboard-hero-sub">
-              {{ formatMoney(data.portfolio.collected_total, 'sales') }} collected of
-              {{ formatMoney(data.portfolio.agreed_sale_value, 'sales') }} agreed across
-              {{ data.portfolio.active_clients }} active clients
-            </p>
-          </div>
-          <div class="sales-dashboard-pipeline">
-            <div class="sales-dashboard-pipeline-step">
-              <p class="sales-dashboard-hero-label">Available inventory</p>
-              <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.available_list_value, 'sales') }}</p>
-              <p class="sales-dashboard-pipeline-hint">{{ data.inventory.available_units }} units for sale</p>
-              <div class="sales-dashboard-pipeline-bar">
-                <div
-                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-available"
-                  :style="{ width: `${pipelinePercent(data.pipeline.available_list_value)}%` }"
-                />
-              </div>
-            </div>
-            <div class="sales-dashboard-pipeline-step">
-              <p class="sales-dashboard-hero-label">Agreed sales</p>
-              <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.agreed_sale_value, 'sales') }}</p>
-              <p class="sales-dashboard-pipeline-hint">{{ data.inventory.sold_units }} units sold</p>
-              <div class="sales-dashboard-pipeline-bar">
-                <div
-                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-agreed"
-                  :style="{ width: `${pipelinePercent(data.pipeline.agreed_sale_value)}%` }"
-                />
-              </div>
-            </div>
-            <div class="sales-dashboard-pipeline-step">
-              <p class="sales-dashboard-hero-label">Cash collected</p>
-              <p class="sales-dashboard-pipeline-value">{{ formatMoney(data.pipeline.collected_total, 'sales') }}</p>
-              <p class="sales-dashboard-pipeline-hint">{{ data.portfolio.clients_paid_up }} clients fully paid</p>
-              <div class="sales-dashboard-pipeline-bar">
-                <div
-                  class="sales-dashboard-pipeline-fill sales-dashboard-pipeline-fill-collected"
-                  :style="{ width: `${pipelinePercent(data.pipeline.collected_total)}%` }"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+      <div class="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard
+          label="Collection rate"
+          :value="`${data.portfolio.collection_rate}%`"
+          :hint="`${formatMoney(data.portfolio.collected_total, 'sales')} of ${formatMoney(data.portfolio.agreed_sale_value, 'sales')}`"
+          accent="info"
+          to="/sales/clients"
+        />
+        <KpiCard
+          label="Available inventory"
+          :value="formatMoney(data.pipeline.available_list_value, 'sales')"
+          :hint="`${data.inventory.available_units} units for sale`"
+          accent="success"
+          to="/sales/units"
+        />
+        <KpiCard
+          label="Agreed sales"
+          :value="formatMoney(data.pipeline.agreed_sale_value, 'sales')"
+          :hint="`${data.inventory.sold_units} units sold`"
+          accent="accent"
+          to="/sales/clients"
+        />
+        <KpiCard
+          label="Cash collected"
+          :value="formatMoney(data.pipeline.collected_total, 'sales')"
+          :hint="`${data.portfolio.clients_paid_up} clients fully paid`"
+          accent="success"
+          to="/sales/payments"
+        />
       </div>
 
       <div class="dashboard-metrics-grid">
@@ -142,7 +121,7 @@
               </div>
               <div class="sales-dashboard-progress-track">
                 <div
-                  class="sales-dashboard-progress-bar bg-gradient-to-r from-emerald-400 to-emerald-500"
+                  class="sales-dashboard-progress-bar bg-emerald-500"
                   :style="{ width: `${pipelinePercent(data.pipeline.available_list_value)}%` }"
                 />
               </div>
@@ -170,7 +149,7 @@
               </div>
               <div class="sales-dashboard-progress-track">
                 <div
-                  class="sales-dashboard-progress-bar bg-gradient-to-r from-indigo-500 to-violet-600"
+                  class="sales-dashboard-progress-bar bg-indigo-500"
                   :style="{ width: `${pipelinePercent(data.pipeline.collected_total)}%` }"
                 />
               </div>
@@ -200,8 +179,8 @@
           action-to="/sales/payments"
         >
           <div class="dashboard-collections">
-            <div class="dashboard-collections-card border-indigo-100 bg-indigo-50/40">
-              <p class="text-xs font-medium uppercase tracking-wide text-indigo-600">This month</p>
+            <div class="dashboard-collections-card border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">This month</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
                 {{ formatMoney(data.collections.current_month, 'sales') }}
               </p>
@@ -226,7 +205,7 @@
 
       <div class="dashboard-grid-2">
         <DashboardPanel title="Top outstanding clients" subtitle="Prioritize follow-up collections" action-to="/sales/clients">
-          <div v-if="data.top_outstanding.length === 0" class="empty-state">All clients are fully paid up.</div>
+          <EmptyState v-if="data.top_outstanding.length === 0" title="All clients paid up" description="No outstanding balances at this time." />
           <ul v-else class="dashboard-list">
             <li v-for="client in data.top_outstanding" :key="client.client_id" class="dashboard-list-item">
               <div class="min-w-0 flex-1">
@@ -236,7 +215,7 @@
                 </p>
                 <div class="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
                   <div
-                    class="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500"
+                    class="h-full rounded-full bg-indigo-500"
                     :style="{ width: `${client.paid_percent}%` }"
                   />
                 </div>
@@ -251,7 +230,7 @@
         </DashboardPanel>
 
         <DashboardPanel title="Recent payments" subtitle="Latest buyer collections" action-to="/sales/payments">
-          <div v-if="data.recent_payments.length === 0" class="empty-state">No payments recorded yet.</div>
+          <EmptyState v-if="data.recent_payments.length === 0" title="No payments yet" description="Payments will appear here once recorded." />
           <ul v-else class="dashboard-list">
             <li v-for="payment in data.recent_payments" :key="payment.payment_id" class="dashboard-list-item">
               <div class="min-w-0">
@@ -269,7 +248,7 @@
 
       <div class="dashboard-grid-2">
         <DashboardPanel title="Available inventory" subtitle="Highest-value units ready to sell" action-to="/sales/units">
-          <div v-if="data.available_inventory.length === 0" class="empty-state">No available units in inventory.</div>
+          <EmptyState v-if="data.available_inventory.length === 0" title="No available units" description="All units are sold or not yet listed." />
           <ul v-else class="space-y-2">
             <li
               v-for="unit in data.available_inventory"
@@ -288,7 +267,7 @@
         </DashboardPanel>
 
         <DashboardPanel title="Recent registrations" subtitle="New buyers onboarded" action-to="/sales/clients">
-          <div v-if="data.recent_registrations.length === 0" class="empty-state">No client registrations yet.</div>
+          <EmptyState v-if="data.recent_registrations.length === 0" title="No registrations yet" description="New clients will appear here." />
           <ul v-else class="dashboard-list">
             <li v-for="client in data.recent_registrations" :key="client.client_id" class="dashboard-list-item">
               <div class="min-w-0">
@@ -319,7 +298,7 @@
         action-to="/sales/buildings"
         class="mb-5"
       >
-        <div v-if="data.building_summary.length === 0" class="empty-state">No buildings configured.</div>
+        <EmptyState v-if="data.building_summary.length === 0" title="No buildings" description="Add a building to see performance here." />
         <div v-else class="overflow-x-auto">
           <table class="dashboard-table">
             <thead>
@@ -356,22 +335,30 @@
       </DashboardPanel>
     </template>
 
-    <div v-else-if="loading" class="dashboard-loading">
-      <p class="text-sm text-zinc-500 dark:text-zinc-400">Loading dashboard…</p>
-    </div>
+    <DashboardSkeleton v-else-if="loading" />
   </section>
 </template>
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import PageHeader from '../../components/PageHeader.vue'
+import KpiCard from '../../components/ui/KpiCard.vue'
 import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard.vue'
 import DashboardPanel from '../../components/dashboard/DashboardPanel.vue'
+import DashboardSkeleton from '../../components/dashboard/DashboardSkeleton.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
 import { fetchDashboard } from '../../api/sales'
 import { formatMoney } from '../../utils/money'
 
 const data = ref(null)
 const loading = ref(false)
 const error = ref('')
+
+const dashboardSubtitle = computed(() => {
+  const period = data.value?.period?.label ?? 'this month'
+  const updated = data.value?.generated_at ? ` · Updated ${formatRelativeTime(data.value.generated_at)}` : ''
+  return `Portfolio snapshot for ${period}${updated}`
+})
 
 const pipelineMax = computed(() => {
   if (!data.value?.pipeline) return 1

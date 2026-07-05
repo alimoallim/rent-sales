@@ -5,8 +5,8 @@ export async function fetchDashboard() {
   return data
 }
 
-export async function fetchBuildings(page = 1) {
-  const { data } = await api.get('/api/v1/rental/buildings', { params: { page } })
+export async function fetchBuildings(params = {}) {
+  const { data } = await api.get('/api/v1/rental/buildings', { params })
   return data
 }
 
@@ -160,6 +160,11 @@ export async function fetchWaterBills(params = {}) {
 
 export async function createWaterBill(payload) {
   const { data } = await api.post('/api/v1/rental/water-bills', payload)
+  return data.data
+}
+
+export async function fetchMeterReadingContext(params) {
+  const { data } = await api.get('/api/v1/rental/meter-readings/context', { params })
   return data.data
 }
 

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StoreUserRequest;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,17 +19,15 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
 
-        $users = User::query()
+        $query = User::query()
             ->when($request->string('role')->toString(), fn ($q, $role) => $q->where('role', $role))
-            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
-            ->when($request->string('search')->toString(), function ($q, $search) {
-                $q->where(function ($query) use ($search) {
-                    $query->where('name', 'ilike', "%{$search}%")
-                        ->orWhere('username', 'ilike', "%{$search}%");
-                });
-            })
+            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status));
+
+        ListQuery::applySearch($query, $request, ['name', 'username', 'email']);
+
+        $users = $query
             ->orderBy('name')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return UserResource::collection($users);
     }

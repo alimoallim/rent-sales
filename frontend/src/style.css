@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap");
 @import "tailwindcss";
+@import "./styles/tokens.css";
 @custom-variant dark (&:where(.dark, .dark *));
 
 body {
@@ -11,11 +12,11 @@ body {
 @layer components {
   /* —— Buttons —— */
   .btn-primary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950 sm:min-h-9;
+    @apply inline-flex min-h-10 items-center justify-center rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-indigo-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-zinc-950 sm:min-h-9;
   }
 
   .btn-secondary {
-    @apply inline-flex min-h-10 items-center justify-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-all duration-200 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-950 sm:min-h-9;
+    @apply inline-flex min-h-10 items-center justify-center rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm font-medium text-zinc-700 shadow-sm transition-all duration-200 hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:focus-visible:ring-offset-zinc-950 sm:min-h-9;
   }
 
   .btn-destructive {
@@ -36,7 +37,7 @@ body {
 
   /* —— Forms —— */
   .input-field {
-    @apply mt-1 min-h-9 w-full rounded-md border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-900 px-2.5 py-2 text-sm text-zinc-900 dark:text-zinc-100 shadow-sm placeholder:text-zinc-400 dark:text-zinc-500 transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20;
+    @apply mt-1 min-h-9 w-full rounded-lg border border-zinc-300 bg-white px-2.5 py-2 text-sm text-zinc-900 shadow-sm placeholder:text-zinc-400 transition-all duration-200 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:placeholder:text-zinc-500;
   }
 
   .input-field-error {
@@ -49,11 +50,11 @@ body {
 
   /* —— Surfaces —— */
   .card-surface {
-    @apply rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm;
+    @apply rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900;
   }
 
   .content-panel {
-    @apply overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm;
+    @apply overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900;
   }
 
   @media print {
@@ -81,7 +82,119 @@ body {
   }
 
   .table-shell {
-    @apply overflow-hidden rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-sm;
+    @apply overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900;
+  }
+
+  .data-table {
+    @apply space-y-3;
+  }
+
+  .data-table-toolbar {
+    @apply flex flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white px-3 py-2.5 shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .data-table-search {
+    @apply relative w-full sm:max-w-xs;
+  }
+
+  .data-table-search-icon {
+    @apply pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400 dark:text-zinc-500;
+  }
+
+  .data-table-search-input {
+    @apply mt-0 w-full pl-9;
+  }
+
+  .data-table-toolbar-meta {
+    @apply flex items-center justify-between gap-3 sm:justify-end;
+  }
+
+  .data-table-summary {
+    @apply text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400;
+  }
+
+  .table-scroll {
+    @apply overflow-x-auto;
+  }
+
+  .data-grid {
+    @apply border-collapse;
+  }
+
+  .data-grid-head {
+    @apply sticky top-0 z-10 border-b border-zinc-200 bg-zinc-50/95 text-left backdrop-blur dark:border-zinc-700 dark:bg-zinc-900/95;
+  }
+
+  .data-grid-th {
+    @apply px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400;
+  }
+
+  .data-grid-body {
+    @apply divide-y divide-zinc-100 dark:divide-zinc-800;
+  }
+
+  .data-grid-row {
+    @apply transition-colors duration-150 odd:bg-white even:bg-zinc-50/60 hover:bg-indigo-50/50 dark:odd:bg-zinc-900 dark:even:bg-zinc-900/70 dark:hover:bg-indigo-950/25;
+  }
+
+  .data-grid-td {
+    @apply px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300;
+  }
+
+  .data-grid-empty {
+    @apply px-4 py-14 text-center text-sm text-zinc-500 dark:text-zinc-400;
+  }
+
+  .data-grid-foot {
+    @apply border-t border-zinc-200 bg-zinc-50 font-semibold text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900/80 dark:text-zinc-100;
+  }
+
+  .table-pagination {
+    @apply flex flex-col gap-3 rounded-xl border border-zinc-200/90 bg-white px-3 py-2.5 shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between;
+  }
+
+  .table-pagination-summary {
+    @apply text-sm text-zinc-600 dark:text-zinc-400;
+  }
+
+  .table-pagination-controls {
+    @apply flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3;
+  }
+
+  .table-pagination-per-page {
+    @apply w-full sm:w-auto;
+  }
+
+  .table-pagination-select {
+    @apply mt-0 min-w-[7.5rem];
+  }
+
+  .table-pagination-nav {
+    @apply flex items-center justify-between gap-2 sm:justify-end;
+  }
+
+  .table-pagination-btn {
+    @apply inline-flex min-h-9 items-center rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800;
+  }
+
+  .table-pagination-page {
+    @apply inline-flex h-9 min-w-9 items-center justify-center rounded-md border border-transparent px-2 text-sm font-medium text-zinc-600 transition hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800;
+  }
+
+  .table-pagination-page-active {
+    @apply border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700 dark:border-indigo-500 dark:bg-indigo-500;
+  }
+
+  .table-pagination-mobile-page {
+    @apply px-2 text-sm text-zinc-600 dark:text-zinc-400;
+  }
+
+  .payment-progress-track {
+    @apply h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700;
+  }
+
+  .payment-progress-fill {
+    @apply h-full rounded-full bg-indigo-600 transition-all duration-300 dark:bg-indigo-500;
   }
 
   .stat-card {
@@ -90,7 +203,15 @@ body {
 
   /* —— App shell (fixed sidebar + sticky topbar) —— */
   .app-shell {
-    @apply min-h-screen bg-zinc-50 dark:bg-zinc-950;
+    @apply min-h-screen bg-zinc-100/80 dark:bg-zinc-950;
+    background-image:
+      radial-gradient(circle at 1px 1px, rgb(161 161 170 / 0.12) 1px, transparent 0);
+    background-size: 24px 24px;
+  }
+
+  .dark .app-shell {
+    background-image:
+      radial-gradient(circle at 1px 1px, rgb(63 63 70 / 0.35) 1px, transparent 0);
   }
 
   .app-shell-main {
@@ -98,7 +219,23 @@ body {
   }
 
   .app-shell-content {
-    @apply flex-1 p-4 lg:p-6;
+    @apply flex-1 p-4 lg:p-6 lg:pb-8;
+  }
+
+  .page-view {
+    animation: page-enter 0.22s ease-out;
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   .app-sidebar {
@@ -192,7 +329,7 @@ body {
   }
 
   .app-topbar {
-    @apply sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-200/80 bg-white px-3 shadow-sm backdrop-blur-md dark:border-zinc-700/80 dark:bg-zinc-900/90 sm:gap-3 sm:px-4 lg:px-6;
+    @apply sticky top-0 z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-zinc-200/80 bg-white/90 px-3 shadow-sm backdrop-blur-md dark:border-zinc-700/80 dark:bg-zinc-900/90 sm:gap-3 sm:px-4 lg:px-6;
   }
 
   .app-topbar-start {
@@ -326,7 +463,7 @@ body {
   }
 
   .dialog-panel {
-    @apply min-h-full w-full border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-xl sm:p-5 lg:min-h-0 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:rounded-md lg:border lg:shadow-lg;
+    @apply min-h-full w-full border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-4 shadow-xl sm:p-5 lg:min-h-0 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:rounded-xl lg:border lg:shadow-lg;
   }
 
   /* —— Segmented / toggle controls —— */
@@ -352,7 +489,7 @@ body {
 
   /* —— Filters —— */
   .filter-bar {
-    @apply mb-3 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center;
+    @apply mb-4 flex flex-col gap-2 rounded-xl border border-zinc-200/90 bg-white px-3 py-3 shadow-sm dark:border-zinc-700/90 dark:bg-zinc-900 sm:flex-row sm:flex-wrap sm:items-center;
   }
 
   .filter-bar .input-field {
@@ -406,16 +543,44 @@ body {
   }
 
   /* —— Page chrome —— */
+  .page-header {
+    @apply mb-6 space-y-5;
+  }
+
+  .page-header-main {
+    @apply flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between;
+  }
+
+  .page-header-actions {
+    @apply flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap lg:w-auto lg:shrink-0;
+  }
+
+  .page-header-kpis {
+    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-4;
+  }
+
+  .page-header-breadcrumb {
+    @apply mb-2;
+  }
+
   .page-title {
-    @apply text-base font-semibold tracking-tight text-zinc-900 dark:text-zinc-100;
+    @apply text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100 sm:text-xl;
   }
 
   .page-subtitle {
-    @apply mt-0.5 text-xs text-zinc-500 dark:text-zinc-400;
+    @apply mt-1 max-w-2xl text-sm leading-relaxed text-zinc-500 dark:text-zinc-400;
   }
 
   .empty-state {
-    @apply px-4 py-10 text-center text-sm text-zinc-500 dark:text-zinc-400;
+    @apply px-4 py-12 text-center text-sm text-zinc-500 dark:text-zinc-400;
+  }
+
+  .empty-state-panel {
+    @apply flex flex-col items-center justify-center rounded-xl border border-dashed border-zinc-200 bg-zinc-50/50 px-6 py-12 text-center dark:border-zinc-700 dark:bg-zinc-900/40;
+  }
+
+  .empty-state-icon {
+    @apply mb-4 flex h-12 w-12 items-center justify-center rounded-xl border border-zinc-200 bg-white text-zinc-400 shadow-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-500;
   }
 
   /* —— Dashboard —— */
@@ -725,7 +890,7 @@ body {
   }
 
   .sales-dashboard-pipeline-fill-available {
-    @apply bg-gradient-to-r from-emerald-300 to-teal-300;
+    @apply bg-gradient-to-r from-emerald-300 to-indigo-300;
   }
 
   .sales-dashboard-pipeline-fill-agreed {
@@ -757,11 +922,44 @@ body {
   }
 
   .sales-dashboard-progress-bar {
-    @apply h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500;
+    @apply h-full rounded-full bg-indigo-500 transition-all duration-500;
   }
 
   .sales-dashboard-inventory-card {
     @apply flex items-start justify-between gap-3 rounded-lg border border-emerald-200 dark:border-emerald-800/80 bg-emerald-50/70 dark:bg-emerald-950/50 p-3;
+  }
+
+  /* —— Charge batches —— */
+  .charge-batch-summary {
+    @apply px-4 py-4 sm:px-5;
+  }
+
+  .charge-batch-summary-grid {
+    @apply grid gap-4 lg:grid-cols-[1fr_auto];
+  }
+
+  .charge-batch-progress-track {
+    @apply mt-3 h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700;
+  }
+
+  .charge-batch-progress-fill {
+    @apply h-full rounded-full bg-indigo-600 transition-all duration-500 dark:bg-indigo-500;
+  }
+
+  .charge-batch-actions {
+    @apply flex flex-wrap gap-2 border-t border-zinc-200 pt-4 dark:border-zinc-700 lg:border-t-0 lg:pt-0;
+  }
+
+  .charge-batch-card {
+    @apply rounded-xl border border-zinc-200/90 bg-white p-3.5 shadow-sm transition-all duration-200 dark:border-zinc-700/90 dark:bg-zinc-900;
+  }
+
+  .charge-batch-card:hover {
+    @apply border-zinc-300 shadow-md dark:border-zinc-600;
+  }
+
+  .charge-batch-card-excluded {
+    @apply opacity-70;
   }
 
   /* —— Bulk meter readings —— */
@@ -1029,6 +1227,10 @@ body {
     @apply inline-flex min-w-[3rem] justify-center rounded-md px-2 py-1 text-sm font-medium tabular-nums;
   }
 
+  .bulk-meter-input-opening {
+    @apply max-w-[5.5rem];
+  }
+
   .bulk-meter-reading-previous {
     @apply bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400;
   }
@@ -1142,11 +1344,76 @@ body {
   }
 
   .login-page {
-    @apply relative flex min-h-screen items-center justify-center bg-zinc-100 px-4 dark:bg-zinc-950;
+    @apply relative flex min-h-screen bg-zinc-100 dark:bg-zinc-950;
   }
 
   .login-page-toolbar {
-    @apply absolute right-4 top-4;
+    @apply absolute right-4 top-4 z-10;
+  }
+
+  .login-page-brand {
+    @apply relative hidden flex-1 flex-col justify-between overflow-hidden bg-zinc-950 p-10 text-white lg:flex;
+  }
+
+  .login-page-brand::before {
+    content: '';
+    @apply pointer-events-none absolute inset-0 bg-gradient-to-br from-indigo-600/90 via-indigo-700/80 to-violet-900/90;
+  }
+
+  .login-page-brand::after {
+    content: '';
+    @apply pointer-events-none absolute inset-0 opacity-30;
+    background-image:
+      radial-gradient(circle at 20% 80%, rgb(255 255 255 / 0.15) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgb(255 255 255 / 0.1) 0%, transparent 40%);
+  }
+
+  .login-page-brand-inner {
+    @apply relative z-10 flex h-full flex-col justify-between;
+  }
+
+  .login-page-brand-logo {
+    @apply flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-white shadow-lg ring-1 ring-white/20 backdrop-blur-sm;
+  }
+
+  .login-page-brand-title {
+    @apply text-3xl font-semibold tracking-tight;
+  }
+
+  .login-page-brand-tagline {
+    @apply mt-3 max-w-md text-base leading-relaxed text-indigo-100/90;
+  }
+
+  .login-page-brand-features {
+    @apply mt-8 space-y-3 text-sm text-indigo-100/85;
+  }
+
+  .login-page-brand-feature {
+    @apply flex items-center gap-2.5;
+  }
+
+  .login-page-brand-feature-icon {
+    @apply flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15 text-xs;
+  }
+
+  .login-page-form-panel {
+    @apply flex flex-1 flex-col items-center justify-center px-4 py-12 sm:px-6 lg:px-10;
+  }
+
+  .login-page-form-card {
+    @apply w-full max-w-[22rem];
+  }
+
+  .login-page-form-header {
+    @apply mb-6;
+  }
+
+  .login-page-form-title {
+    @apply text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100;
+  }
+
+  .login-page-form-subtitle {
+    @apply mt-1.5 text-sm text-zinc-500 dark:text-zinc-400;
   }
 
   /* —— Searchable select —— */

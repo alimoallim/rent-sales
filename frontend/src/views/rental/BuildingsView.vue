@@ -1,31 +1,42 @@
 <template>
   <section>
-    <PageHeader title="Buildings" subtitle="Rent property groupings.">
+    <PageHeader
+      title="Buildings"
+      subtitle="Rent property groupings."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Buildings' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">Add building</button>
       </template>
     </PageHeader>
 
-    <ResponsiveDataList
-      :items="buildings"
+    <DataTable
+      v-model:search="search"
+      server-side
+      :items="items"
       :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
       empty-message="No buildings yet."
+      @search="onSearchChange"
+      @page-change="goToPage"
+      @per-page-change="setPerPage"
     >
       <template #actions="{ item }">
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
         <button type="button" class="btn-destructive w-full sm:w-auto" @click="remove(item)">Delete</button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
     <AppDialog v-model:open="showForm" :title="editing ? 'Edit building' : 'Add building'" size="sm">
-      <label class="label-field">
-        Name
+      <FormField label="Name" :error="error" required>
         <input v-model="form.name" class="input-field" required />
-      </label>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      </FormField>
       <template #footer>
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-secondary w-full sm:w-auto" :disabled="saving" @click="closeForm">Cancel</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -35,10 +46,20 @@
 import { onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FormField from '../../components/ui/FormField.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import { createBuilding, deleteBuilding, fetchBuildings, updateBuilding } from '../../api/rental'
 
-const buildings = ref([])
+const { confirm } = useConfirm()
+const toast = useToast()
+
+const { items, loading, search, pagination, load, reload, goToPage, setPerPage, onSearchChange } = usePaginatedList(
+  (params) => fetchBuildings(params),
+)
+const saving = ref(false)
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
@@ -46,13 +67,8 @@ const form = reactive({ name: '' })
 
 const columns = [
   { key: 'name', label: 'Name', cardTitle: true },
-  { key: 'units_count', label: 'Units', mobileCard: true, format: (row) => row.units_count ?? 0 },
+  { key: 'units_count', label: 'Units', mobileCard: true, align: 'right', format: (row) => row.units_count ?? 0 },
 ]
-
-async function load() {
-  const response = await fetchBuildings()
-  buildings.value = response.data
-}
 
 function openCreate() {
   editing.value = null
@@ -74,26 +90,38 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     if (editing.value) {
       await updateBuilding(editing.value.id, { name: form.name })
+      toast.success('Building updated.')
     } else {
       await createBuilding({ name: form.name })
+      toast.success('Building created.')
     }
     closeForm()
-    await load()
+    await reload()
   } catch (e) {
     error.value = e.response?.data?.message || 'Could not save building.'
+  } finally {
+    saving.value = false
   }
 }
 
 async function remove(building) {
-  if (!confirm(`Delete ${building.name}?`)) return
+  const ok = await confirm({
+    title: 'Delete building',
+    message: `Delete "${building.name}"? This cannot be undone if units are linked.`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await deleteBuilding(building.id)
-    await load()
+    toast.success('Building deleted.')
+    await reload()
   } catch (e) {
-    alert(e.response?.data?.message || 'Could not delete building.')
+    toast.error(e.response?.data?.message || 'Could not delete building.')
   }
 }
 

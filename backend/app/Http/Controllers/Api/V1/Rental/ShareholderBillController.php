@@ -7,6 +7,7 @@ use App\Http\Requests\Rental\StoreShareholderBillRequest;
 use App\Http\Requests\Rental\UpdateShareholderBillRequest;
 use App\Http\Resources\ShareholderBillResource;
 use App\Models\ShareholderBill;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,14 +18,18 @@ class ShareholderBillController extends Controller
     {
         $this->authorize('viewAny', ShareholderBill::class);
 
-        $bills = ShareholderBill::query()
+        $query = ShareholderBill::query()
             ->with(['shareholder', 'building'])
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
             ->when($request->integer('shareholder_id'), fn ($q, $id) => $q->where('shareholder_id', $id))
             ->when($request->input('from'), fn ($q, $from) => $q->whereDate('bill_date', '>=', $from))
-            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('bill_date', '<=', $to))
+            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('bill_date', '<=', $to));
+
+        ListQuery::applySearch($query, $request, ['remark'], ['shareholder' => 'name']);
+
+        $bills = $query
             ->orderByDesc('bill_date')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return ShareholderBillResource::collection($bills);
     }

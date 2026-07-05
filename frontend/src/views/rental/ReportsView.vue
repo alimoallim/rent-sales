@@ -1,11 +1,16 @@
 <template>
   <section>
-    <PageHeader title="Reports" subtitle="Balances, payments, charges, and income statement.">
+    <PageHeader
+      title="Reports"
+      subtitle="Balances, payments, charges, and income statement."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Reports' }]"
+    >
       <template #actions>
         <button
           v-if="reportType !== 'income-statement'"
           type="button"
           class="btn-secondary w-full sm:w-auto"
+          :disabled="loading || !report"
           @click="exportCsv"
         >
           Export CSV
@@ -16,7 +21,7 @@
       </template>
     </PageHeader>
 
-    <div class="filter-bar">
+    <FilterBar>
       <select v-model="reportType" class="input-field" @change="load">
         <option value="tenant-balances">Tenant balances</option>
         <option value="payment-history">Payment history</option>
@@ -35,15 +40,15 @@
       <template v-if="reportType === 'payment-history'">
         <input v-model="filters.from" type="date" class="input-field" @change="load" />
         <input v-model="filters.to" type="date" class="input-field" @change="load" />
-        <label class="flex min-h-11 items-center gap-2 text-sm text-slate-700">
-          <input v-model="filters.include_voided" type="checkbox" class="h-4 w-4" @change="load" />
+        <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input v-model="filters.include_voided" type="checkbox" class="h-4 w-4 rounded border-zinc-300" @change="load" />
           Include voided
         </label>
       </template>
 
       <template v-if="reportType === 'tenant-balances'">
-        <label class="flex min-h-11 items-center gap-2 text-sm text-slate-700">
-          <input v-model="filters.outstanding_only" type="checkbox" class="h-4 w-4" @change="load" />
+        <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+          <input v-model="filters.outstanding_only" type="checkbox" class="h-4 w-4 rounded border-zinc-300" @change="load" />
           Outstanding only
         </label>
       </template>
@@ -57,33 +62,78 @@
 
       <template v-if="reportType === 'income-statement'">
         <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-          <input v-model="filters.legacy_income_mode" type="checkbox" class="h-4 w-4" @change="load" />
+          <input v-model="filters.legacy_income_mode" type="checkbox" class="h-4 w-4 rounded border-zinc-300" @change="load" />
           Legacy calculation (match old system)
         </label>
       </template>
-    </div>
+    </FilterBar>
 
     <p v-if="error" class="alert-error mb-3">{{ error }}</p>
 
     <div id="print-area" class="content-panel">
-      <IncomeStatementReport
-        v-if="reportType === 'income-statement' && incomeStatement"
-        :statement="incomeStatement"
-        :building-name="selectedBuildingName"
-        @export="exportIncomeCsv"
-      />
+      <TableSkeleton v-if="loading" :rows="8" :columns="5" />
 
-      <ResponsiveDataList
+      <template v-else-if="reportType === 'income-statement'">
+        <IncomeStatementReport
+          v-if="incomeStatement"
+          :statement="incomeStatement"
+          :building-name="selectedBuildingName"
+          @export="exportIncomeCsv"
+        />
+        <EmptyState
+          v-else-if="!filters.building_id"
+          title="Select a building"
+          description="Choose a building above to generate the income statement for the selected period."
+        />
+        <EmptyState
+          v-else
+          title="No income statement data"
+          description="No data available for the selected building and billing period."
+        />
+      </template>
+
+      <DataTable
         v-else
+        searchable
         :items="tableRows"
         :columns="tableColumns"
         row-key="tenant_name"
+        money-module="rental"
         empty-message="No data for selected filters."
         :footer-label="tableTotals ? 'Totals' : ''"
         :footer-value="tableTotals ? formatMoney(tableTotals, 'rental') : ''"
       >
-        <template #cell-paid_at="{ item }">{{ formatDate(item.paid_at) }}</template>
-      </ResponsiveDataList>
+        <template #cell-paid_at="{ item }">
+          <DateCell :value="item.paid_at" />
+        </template>
+        <template #cell-balance="{ item }">
+          <MoneyCell :amount="item.balance" module="rental" />
+        </template>
+        <template #cell-amount="{ item }">
+          <MoneyCell :amount="item.amount" module="rental" />
+        </template>
+        <template #cell-discount="{ item }">
+          <MoneyCell :amount="item.discount" module="rental" />
+        </template>
+        <template #cell-monthly_rent="{ item }">
+          <MoneyCell :amount="item.monthly_rent" module="rental" />
+        </template>
+        <template #cell-service_amount="{ item }">
+          <MoneyCell :amount="item.service_amount" module="rental" />
+        </template>
+        <template #cell-charged_amount="{ item }">
+          <MoneyCell :amount="item.charged_amount" module="rental" />
+        </template>
+        <template #cell-paid_amount="{ item }">
+          <MoneyCell :amount="item.paid_amount" module="rental" />
+        </template>
+        <template #cell-total_amount="{ item }">
+          <MoneyCell :amount="item.total_amount" module="rental" />
+        </template>
+        <template #cell-rent_amount="{ item }">
+          <MoneyCell :amount="item.rent_amount" module="rental" />
+        </template>
+      </DataTable>
     </div>
   </section>
 </template>
@@ -92,8 +142,14 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import DateCell from '../../components/data/DateCell.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
+import TableSkeleton from '../../components/data/TableSkeleton.vue'
 import IncomeStatementReport from '../../components/rental/IncomeStatementReport.vue'
+import { useToast } from '../../composables/useToast'
 import {
   downloadReportCsv,
   fetchBuildings,
@@ -104,10 +160,13 @@ import {
 } from '../../api/rental'
 import { formatMoney } from '../../utils/money'
 
+const toast = useToast()
+
 const buildings = ref([])
 const reportType = ref('tenant-balances')
 const report = ref(null)
 const incomeStatement = ref(null)
+const loading = ref(false)
 const error = ref('')
 const now = new Date()
 const filters = reactive({
@@ -184,13 +243,6 @@ const tableTotals = computed(() => {
   return null
 })
 
-
-
-function formatDate(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-KE')
-}
-
 function buildParams() {
   const params = {}
   if (filters.building_id) params.building_id = filters.building_id
@@ -217,12 +269,13 @@ async function load() {
   incomeStatement.value = null
   report.value = null
 
+  if (reportType.value === 'income-statement' && !filters.building_id) {
+    return
+  }
+
+  loading.value = true
   try {
     if (reportType.value === 'income-statement') {
-      if (!filters.building_id) {
-        error.value = 'Select a building for the income statement.'
-        return
-      }
       incomeStatement.value = await fetchIncomeStatementReport(buildParams())
       return
     }
@@ -235,16 +288,30 @@ async function load() {
       report.value = await fetchChargeSummaryReport(buildParams())
     }
   } catch (e) {
-    error.value = e.response?.data?.message || 'Could not load report.'
+    const message = e.response?.data?.message || 'Could not load report.'
+    error.value = message
+    toast.error(message)
+  } finally {
+    loading.value = false
   }
 }
 
 async function exportCsv() {
-  await downloadReportCsv(reportType.value, buildParams(), `${reportType.value}.csv`)
+  try {
+    await downloadReportCsv(reportType.value, buildParams(), `${reportType.value}.csv`)
+    toast.success('Report exported.')
+  } catch {
+    toast.error('Could not export report.')
+  }
 }
 
 async function exportIncomeCsv() {
-  await downloadReportCsv('income-statement', buildParams(), 'income-statement.csv')
+  try {
+    await downloadReportCsv('income-statement', buildParams(), 'income-statement.csv')
+    toast.success('Income statement exported.')
+  } catch {
+    toast.error('Could not export income statement.')
+  }
 }
 
 function printReport() {

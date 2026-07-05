@@ -1,6 +1,10 @@
 <template>
   <section>
-    <PageHeader title="Building utilities" subtitle="Nairobi Water and electricity bills per building.">
+    <PageHeader
+      title="Building utilities"
+      subtitle="Nairobi Water and electricity bills per building."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Utilities' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">
           Add bill
@@ -12,12 +16,12 @@
       These are building operating costs. They are not charged to individual tenants.
     </div>
 
-    <div class="filter-bar">
+    <FilterBar>
       <div class="segmented-control">
         <button
           type="button"
           class="segmented-option"
-          :class="tab === 'nairobi' ? 'segmented-option-active' : 'text-slate-700'"
+          :class="{ 'segmented-option-active': tab === 'nairobi' }"
           @click="setTab('nairobi')"
         >
           Nairobi Water
@@ -25,7 +29,7 @@
         <button
           type="button"
           class="segmented-option"
-          :class="tab === 'electricity' ? 'segmented-option-active' : 'text-slate-700'"
+          :class="{ 'segmented-option-active': tab === 'electricity' }"
           @click="setTab('electricity')"
         >
           Electricity
@@ -36,56 +40,94 @@
         :buildings="buildings"
         include-all
         placeholder="All buildings"
-        @change="load"
+        @change="loadTable"
       />
-    </div>
+    </FilterBar>
 
-    <ResponsiveDataList :items="utilityBills" :columns="utilityColumns" empty-message="No utility bills found.">
+    <DataTable
+      v-if="tab === 'nairobi'"
+      v-model:search="waterSearch"
+      server-side
+      :items="waterItems"
+      :columns="utilityColumns"
+      :loading="waterLoading"
+      :pagination="waterPagination"
+      money-module="rental"
+      empty-message="No utility bills found."
+      @search="onWaterSearchChange"
+      @page-change="waterGoToPage"
+      @per-page-change="setWaterPerPage"
+    >
       <template #cell-period="{ item }">{{ item.billing_month }}/{{ item.billing_year }}</template>
-      <template #cell-billed_at="{ item }">{{ formatDate(item.billed_at) }}</template>
-    </ResponsiveDataList>
+      <template #cell-amount="{ item }">
+        <MoneyCell :amount="item.amount" module="rental" />
+      </template>
+      <template #cell-billed_at="{ item }">
+        <DateCell :value="item.billed_at" />
+      </template>
+    </DataTable>
+
+    <DataTable
+      v-else
+      v-model:search="electricitySearch"
+      server-side
+      :items="electricityItems"
+      :columns="utilityColumns"
+      :loading="electricityLoading"
+      :pagination="electricityPagination"
+      money-module="rental"
+      empty-message="No utility bills found."
+      @search="onElectricitySearchChange"
+      @page-change="electricityGoToPage"
+      @per-page-change="setElectricityPerPage"
+    >
+      <template #cell-period="{ item }">{{ item.billing_month }}/{{ item.billing_year }}</template>
+      <template #cell-amount="{ item }">
+        <MoneyCell :amount="item.amount" module="rental" />
+      </template>
+      <template #cell-billed_at="{ item }">
+        <DateCell :value="item.billed_at" />
+      </template>
+    </DataTable>
 
     <AppDialog
       v-model:open="showForm"
       :title="`Add ${tab === 'nairobi' ? 'Nairobi Water' : 'electricity'} bill`"
       size="sm"
+      :close-on-backdrop="false"
     >
       <div class="grid gap-4">
-        <label class="label-field">
-          Building
+        <FormField label="Building" required>
           <BuildingSearchSelect
             v-model="form.rental_building_id"
             :buildings="buildings"
             required
           />
-        </label>
-        <label class="label-field">
-          Month
+        </FormField>
+        <FormField label="Month" required>
           <select v-model="form.billing_month" class="input-field" required>
             <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
           </select>
-        </label>
-        <label class="label-field">
-          Year
+        </FormField>
+        <FormField label="Year" required>
           <input v-model="form.billing_year" type="number" min="2000" class="input-field" required />
-        </label>
-        <label class="label-field">
-          {{ amountLabel('rental') }}
+        </FormField>
+        <FormField :label="amountLabel('rental')" required>
           <input v-model="form.amount" type="number" min="0" step="0.01" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Billed on
+        </FormField>
+        <FormField label="Billed on" required>
           <input v-model="form.billed_at" type="date" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Remark
+        </FormField>
+        <FormField label="Remark">
           <input v-model="form.remark" class="input-field" />
-        </label>
+        </FormField>
       </div>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -96,7 +138,13 @@ import { onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
+import FormField from '../../components/ui/FormField.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import DateCell from '../../components/data/DateCell.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
+import { useToast } from '../../composables/useToast'
+import { usePaginatedList } from '../../composables/usePaginatedList'
 import {
   createElectricityBill,
   createNairobiWaterBill,
@@ -106,8 +154,10 @@ import {
 } from '../../api/rental'
 import { amountLabel } from '../../utils/money'
 
+const toast = useToast()
+
 const buildings = ref([])
-const utilityBills = ref([])
+const saving = ref(false)
 const tab = ref('nairobi')
 const showForm = ref(false)
 const error = ref('')
@@ -121,6 +171,40 @@ const form = reactive({
   billed_at: now.toISOString().slice(0, 10),
   remark: '',
 })
+
+const {
+  items: waterItems,
+  loading: waterLoading,
+  search: waterSearch,
+  pagination: waterPagination,
+  load: loadWater,
+  reload: reloadWater,
+  goToPage: waterGoToPage,
+  setPerPage: setWaterPerPage,
+  onSearchChange: onWaterSearchChange,
+} = usePaginatedList((params) =>
+  fetchNairobiWaterBills({
+    ...params,
+    building_id: filters.building_id || undefined,
+  }),
+)
+
+const {
+  items: electricityItems,
+  loading: electricityLoading,
+  search: electricitySearch,
+  pagination: electricityPagination,
+  load: loadElectricity,
+  reload: reloadElectricity,
+  goToPage: electricityGoToPage,
+  setPerPage: setElectricityPerPage,
+  onSearchChange: onElectricitySearchChange,
+} = usePaginatedList((params) =>
+  fetchElectricityBills({
+    ...params,
+    building_id: filters.building_id || undefined,
+  }),
+)
 
 const utilityColumns = [
   { key: 'building_name', label: 'Building', cardTitle: true },
@@ -137,30 +221,26 @@ const months = [
   { value: 10, label: 'October' }, { value: 11, label: 'November' }, { value: 12, label: 'December' },
 ]
 
-
-
-function formatDate(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-KE')
-}
-
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
 }
 
-async function load() {
-  const params = {}
-  if (filters.building_id) params.building_id = filters.building_id
-  const response = tab.value === 'nairobi'
-    ? await fetchNairobiWaterBills(params)
-    : await fetchElectricityBills(params)
-  utilityBills.value = response.data
+async function loadTable() {
+  if (tab.value === 'nairobi') {
+    await reloadWater()
+  } else {
+    await reloadElectricity()
+  }
 }
 
 function setTab(next) {
   tab.value = next
-  load()
+  if (next === 'nairobi') {
+    loadWater()
+  } else {
+    loadElectricity()
+  }
 }
 
 function openCreate() {
@@ -182,24 +262,32 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     if (tab.value === 'nairobi') {
       await createNairobiWaterBill(form)
     } else {
       await createElectricityBill(form)
     }
+    toast.success('Utility bill saved.')
     closeForm()
-    await load()
+    if (tab.value === 'nairobi') {
+      await reloadWater()
+    } else {
+      await reloadElectricity()
+    }
   } catch (e) {
     const validation = e.response?.data?.errors
     error.value = validation
       ? Object.values(validation).flat().join(' ')
       : e.response?.data?.message || 'Could not save utility bill.'
+  } finally {
+    saving.value = false
   }
 }
 
 onMounted(async () => {
   await loadBuildings()
-  await load()
+  await loadWater()
 })
 </script>

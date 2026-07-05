@@ -7,19 +7,24 @@ use App\Http\Requests\Sales\StoreSaleBuildingRequest;
 use App\Http\Requests\Sales\UpdateSaleBuildingRequest;
 use App\Http\Resources\SaleBuildingResource;
 use App\Models\SaleBuilding;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SaleBuildingController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', SaleBuilding::class);
 
-        $buildings = SaleBuilding::query()
-            ->withCount('units')
+        $query = SaleBuilding::query()->withCount('units');
+
+        ListQuery::applySearch($query, $request, ['name']);
+
+        $buildings = $query
             ->orderBy('name')
-            ->paginate(25);
+            ->paginate(ListQuery::perPage($request));
 
         return SaleBuildingResource::collection($buildings);
     }

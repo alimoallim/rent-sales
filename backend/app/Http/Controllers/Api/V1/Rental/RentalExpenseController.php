@@ -7,6 +7,7 @@ use App\Http\Requests\Rental\StoreRentalExpenseRequest;
 use App\Http\Requests\Rental\UpdateRentalExpenseRequest;
 use App\Http\Resources\RentalExpenseResource;
 use App\Models\RentalExpense;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,13 +18,17 @@ class RentalExpenseController extends Controller
     {
         $this->authorize('viewAny', RentalExpense::class);
 
-        $expenses = RentalExpense::query()
+        $query = RentalExpense::query()
             ->with('building')
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
             ->when($request->input('from'), fn ($q, $from) => $q->whereDate('expense_date', '>=', $from))
-            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('expense_date', '<=', $to))
+            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('expense_date', '<=', $to));
+
+        ListQuery::applySearch($query, $request, ['name', 'description']);
+
+        $expenses = $query
             ->orderByDesc('expense_date')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return RentalExpenseResource::collection($expenses);
     }

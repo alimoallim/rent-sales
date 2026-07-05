@@ -10,9 +10,20 @@ function appBaseUrl() {
   return ''
 }
 
+function xsrfTokenFromCookie() {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/)
+  return match ? decodeURIComponent(match[1]) : null
+}
+
 const api = axios.create({
   baseURL: appBaseUrl(),
   withCredentials: true,
+  xsrfCookieName: 'XSRF-TOKEN',
+  xsrfHeaderName: 'X-XSRF-TOKEN',
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',
@@ -28,8 +39,28 @@ api.interceptors.request.use((config) => {
     config.url = config.url.slice(1)
   }
 
+  const token = xsrfTokenFromCookie()
+  if (token) {
+    config.headers['X-XSRF-TOKEN'] = token
+  }
+
   return config
 })
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 419) {
+      resetCsrfCookie()
+    }
+
+    return Promise.reject(error)
+  },
+)
+
+export function resetCsrfCookie() {
+  csrfReady = false
+}
 
 let csrfReady = false
 

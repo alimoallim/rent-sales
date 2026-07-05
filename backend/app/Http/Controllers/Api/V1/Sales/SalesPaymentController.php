@@ -8,6 +8,7 @@ use App\Http\Requests\Sales\StoreSalesPaymentRequest;
 use App\Http\Requests\Sales\UpdateSalesPaymentRequest;
 use App\Http\Resources\SalesPaymentResource;
 use App\Models\SalesPayment;
+use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
@@ -17,17 +18,19 @@ class SalesPaymentController extends Controller
     {
         $this->authorize('viewAny', SalesPayment::class);
 
-        $perPage = min(max($request->integer('per_page', 50), 1), 100);
-
-        $payments = SalesPayment::query()
+        $query = SalesPayment::query()
             ->with(['client.unit', 'building'])
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('sale_building_id', $id))
             ->when($request->integer('client_id'), fn ($q, $id) => $q->where('client_id', $id))
             ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
             ->when($request->input('from'), fn ($q, $from) => $q->whereDate('paid_at', '>=', $from))
-            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('paid_at', '<=', $to))
+            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('paid_at', '<=', $to));
+
+        ListQuery::applySearch($query, $request, ['invoice_reference', 'bank', 'remark'], ['client' => 'name']);
+
+        $payments = $query
             ->orderByDesc('paid_at')
-            ->paginate($perPage);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return SalesPaymentResource::collection($payments);
     }

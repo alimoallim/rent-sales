@@ -1,6 +1,10 @@
 <template>
   <section>
-    <PageHeader title="Expenses" subtitle="Building operating expenses.">
+    <PageHeader
+      title="Expenses"
+      subtitle="Building operating expenses."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Expenses' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">
           Add expense
@@ -8,57 +12,71 @@
       </template>
     </PageHeader>
 
-    <div class="filter-bar">
+    <FilterBar>
       <BuildingSearchSelect
         v-model="filters.building_id"
         :buildings="buildings"
         include-all
         placeholder="All buildings"
-        @change="load"
+        @change="loadTable"
       />
-      <input v-model="filters.from" type="date" class="input-field" @change="load" />
-      <input v-model="filters.to" type="date" class="input-field" @change="load" />
-    </div>
+      <input v-model="filters.from" type="date" class="input-field" @change="loadTable" />
+      <input v-model="filters.to" type="date" class="input-field" @change="loadTable" />
+    </FilterBar>
 
-    <ResponsiveDataList :items="expenses" :columns="columns" empty-message="No expenses found.">
-      <template #cell-expense_date="{ item }">{{ formatDate(item.expense_date) }}</template>
+    <DataTable
+      v-model:search="search"
+      server-side
+      :items="items"
+      :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      money-module="rental"
+      empty-message="No expenses found."
+      @search="onSearchChange"
+      @page-change="goToPage"
+      @per-page-change="setPerPage"
+    >
+      <template #cell-expense_date="{ item }">
+        <DateCell :value="item.expense_date" />
+      </template>
+      <template #cell-amount="{ item }">
+        <MoneyCell :amount="item.amount" module="rental" />
+      </template>
       <template #actions="{ item }">
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
         <button type="button" class="btn-destructive w-full sm:w-auto" @click="remove(item)">Delete</button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
-    <AppDialog v-model:open="showForm" :title="editing ? 'Edit expense' : 'Add expense'" size="sm">
+    <AppDialog v-model:open="showForm" :title="editing ? 'Edit expense' : 'Add expense'" size="sm" :close-on-backdrop="false">
       <div class="grid gap-4">
-        <label class="label-field">
-          Building
+        <FormField label="Building" required>
           <BuildingSearchSelect
             v-model="form.rental_building_id"
             :buildings="buildings"
             required
           />
-        </label>
-        <label class="label-field">
-          Name
+        </FormField>
+        <FormField label="Name" required>
           <input v-model="form.name" class="input-field" required />
-        </label>
-        <label class="label-field">
-          {{ amountLabel('rental') }}
+        </FormField>
+        <FormField :label="amountLabel('rental')" required>
           <input v-model="form.amount" type="number" min="0" step="0.01" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Date
+        </FormField>
+        <FormField label="Date" required>
           <input v-model="form.expense_date" type="date" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Description
+        </FormField>
+        <FormField label="Description">
           <textarea v-model="form.description" rows="2" class="input-field" />
-        </label>
+        </FormField>
       </div>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -69,12 +87,22 @@ import { onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
+import FormField from '../../components/ui/FormField.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import DateCell from '../../components/data/DateCell.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import { createExpense, deleteExpense, fetchBuildings, fetchExpenses, updateExpense } from '../../api/rental'
 import { amountLabel } from '../../utils/money'
 
+const { confirm } = useConfirm()
+const toast = useToast()
+
 const buildings = ref([])
-const expenses = ref([])
+const saving = ref(false)
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
@@ -87,6 +115,25 @@ const form = reactive({
   description: '',
 })
 
+const {
+  items,
+  loading,
+  search,
+  pagination,
+  load,
+  reload,
+  goToPage,
+  setPerPage,
+  onSearchChange,
+} = usePaginatedList((params) =>
+  fetchExpenses({
+    ...params,
+    building_id: filters.building_id || undefined,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
+  }),
+)
+
 const columns = [
   { key: 'name', label: 'Name', cardTitle: true },
   { key: 'amount', label: 'Amount', align: 'right', money: true, mobileCard: true },
@@ -94,25 +141,13 @@ const columns = [
   { key: 'building_name', label: 'Building', tabletCard: true },
 ]
 
-
-
-function formatDate(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-KE')
-}
-
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
 }
 
-async function load() {
-  const params = {}
-  if (filters.building_id) params.building_id = filters.building_id
-  if (filters.from) params.from = filters.from
-  if (filters.to) params.to = filters.to
-  const response = await fetchExpenses(params)
-  expenses.value = response.data
+async function loadTable() {
+  await reload()
 }
 
 function openCreate() {
@@ -147,26 +182,38 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     if (editing.value) {
       await updateExpense(editing.value.id, form)
+      toast.success('Expense updated.')
     } else {
       await createExpense(form)
+      toast.success('Expense added.')
     }
     closeForm()
-    await load()
+    await reload()
   } catch (e) {
     error.value = e.response?.data?.message || 'Could not save expense.'
+  } finally {
+    saving.value = false
   }
 }
 
 async function remove(expense) {
-  if (!window.confirm(`Delete expense "${expense.name}"?`)) return
+  const ok = await confirm({
+    title: 'Delete expense',
+    message: `Delete expense "${expense.name}"?`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await deleteExpense(expense.id)
-    await load()
+    toast.success('Expense deleted.')
+    await reload()
   } catch (e) {
-    window.alert(e.response?.data?.message || 'Could not delete expense.')
+    toast.error(e.response?.data?.message || 'Could not delete expense.')
   }
 }
 

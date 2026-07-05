@@ -30,6 +30,14 @@
       >
         Charge history
       </button>
+      <RouterLink
+        :to="{ path: '/rental/payments', query: { tenant_id: tenantId, building_id: buildingId, action: 'new' } }"
+        class="block w-full px-3 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 transition-colors duration-200 hover:bg-zinc-50 dark:hover:bg-zinc-900/50"
+        role="menuitem"
+        @click="close"
+      >
+        Record payment
+      </RouterLink>
     </div>
 
     <TenantHistoryModal
@@ -44,6 +52,7 @@
 
 <script setup>
 import { onMounted, onUnmounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import TenantHistoryModal from './TenantHistoryModal.vue'
 
 defineProps({

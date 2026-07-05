@@ -5,8 +5,8 @@ export async function fetchDashboard() {
   return data
 }
 
-export async function fetchBuildings(page = 1) {
-  const { data } = await api.get('/api/v1/sales/buildings', { params: { page } })
+export async function fetchBuildings(params = {}) {
+  const { data } = await api.get('/api/v1/sales/buildings', { params })
   return data
 }
 

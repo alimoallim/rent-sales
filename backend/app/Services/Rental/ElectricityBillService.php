@@ -13,6 +13,7 @@ class ElectricityBillService
 
     public function __construct(
         private readonly ChargeBatchUtilitySyncService $utilitySync,
+        private readonly MeterReadingResolver $meterReadingResolver,
     ) {}
 
     /**
@@ -37,6 +38,17 @@ class ElectricityBillService
     public function create(array $data, int $userId): TenantElectricityBill
     {
         $this->assertUniquePeriod($data['tenant_id'], $data['billing_month'], $data['billing_year']);
+
+        $previousReading = $this->meterReadingResolver->resolvePreviousReading(
+            TenantElectricityBill::class,
+            (int) $data['tenant_id'],
+            (int) $data['billing_month'],
+            (int) $data['billing_year'],
+            array_key_exists('previous_reading', $data) ? (int) $data['previous_reading'] : null,
+            (int) $data['current_reading'],
+        );
+
+        $data['previous_reading'] = $previousReading;
 
         $calculated = $this->calculateAmounts($data);
         $amount = $data['amount'] ?? $calculated['amount'];

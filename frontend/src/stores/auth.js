@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api, { ensureCsrfCookie } from '../api/client'
+import api, { ensureCsrfCookie, resetCsrfCookie } from '../api/client'
 
 const MODULE_KEY = 'preferredModule'
 
@@ -50,15 +50,34 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async login(username, password, remember = false) {
+      resetCsrfCookie()
       await ensureCsrfCookie()
-      const { data } = await api.post('/api/v1/auth/login', {
-        username,
-        password,
-        remember,
-      })
-      this.user = data.data
-      this.checked = true
-      return this.user
+
+      try {
+        const { data } = await api.post('/api/v1/auth/login', {
+          username,
+          password,
+          remember,
+        })
+        this.user = data.data
+        this.checked = true
+        return this.user
+      } catch (error) {
+        if (error.response?.status === 419) {
+          resetCsrfCookie()
+          await ensureCsrfCookie()
+          const { data } = await api.post('/api/v1/auth/login', {
+            username,
+            password,
+            remember,
+          })
+          this.user = data.data
+          this.checked = true
+          return this.user
+        }
+
+        throw error
+      }
     },
 
     async logout() {

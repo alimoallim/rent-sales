@@ -3,48 +3,48 @@
     <PageHeader
       title="Units"
       subtitle="Monitor apartment availability, occupancy, and monthly rent across your buildings."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Units' }]"
     >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">
           Add unit
         </button>
       </template>
+      <template v-if="summary" #kpis>
+        <KpiCard
+          label="Total units"
+          :value="String(summary.total)"
+          hint="In current filter"
+          accent="neutral"
+        />
+        <KpiCard
+          label="Available"
+          :value="String(summary.vacant)"
+          :hint="summary.vacant === 1 ? 'Ready to let' : 'Vacant units ready to let'"
+          accent="success"
+        />
+        <KpiCard
+          label="Occupied"
+          :value="String(summary.occupied)"
+          :hint="summary.occupied === 1 ? 'Currently tenanted' : 'Units with active tenants'"
+          accent="info"
+        />
+        <KpiCard
+          label="Occupancy rate"
+          :value="`${summary.occupancy_rate}%`"
+          :hint="`${summary.occupied} of ${summary.total} units occupied`"
+          accent="warning"
+        />
+      </template>
     </PageHeader>
 
-    <div v-if="summary" class="dashboard-metrics-grid mb-5">
-      <DashboardMetricCard
-        label="Total units"
-        :value="String(summary.total)"
-        hint="In current filter"
-        accent="neutral"
-      />
-      <DashboardMetricCard
-        label="Available"
-        :value="String(summary.vacant)"
-        :hint="summary.vacant === 1 ? 'Ready to let' : 'Vacant units ready to let'"
-        accent="success"
-      />
-      <DashboardMetricCard
-        label="Occupied"
-        :value="String(summary.occupied)"
-        :hint="summary.occupied === 1 ? 'Currently tenanted' : 'Units with active tenants'"
-        accent="info"
-      />
-      <DashboardMetricCard
-        label="Occupancy rate"
-        :value="`${summary.occupancy_rate}%`"
-        :hint="`${summary.occupied} of ${summary.total} units occupied`"
-        accent="warning"
-      />
-    </div>
-
-    <div class="filter-bar">
+    <FilterBar>
       <BuildingSearchSelect
         v-model="filters.building_id"
         :buildings="buildings"
         include-all
         placeholder="All buildings"
-        @change="load"
+        @change="loadTable"
       />
       <div class="segmented-control">
         <button
@@ -72,13 +72,21 @@
           Occupied
         </button>
       </div>
-    </div>
+    </FilterBar>
 
-    <ResponsiveDataList
-      :items="units"
+    <DataTable
+      v-model:search="search"
+      server-side
+      :items="items"
       :columns="columns"
+      :loading="loading"
+      :pagination="pagination"
+      money-module="rental"
       :empty-message="emptyMessage"
       :row-class="unitRowClass"
+      @search="onSearchChange"
+      @page-change="goToPage"
+      @per-page-change="setPerPage"
     >
       <template #card-title-house_number="{ item }">
         <div class="flex items-center gap-2">
@@ -100,7 +108,7 @@
       </template>
 
       <template #cell-monthly_rent="{ item }">
-        <span class="font-medium tabular-nums text-zinc-900 dark:text-zinc-100">{{ formatMoney(item.monthly_rent, 'rental') }}</span>
+        <MoneyCell :amount="item.monthly_rent" module="rental" />
       </template>
 
       <template #cell-status="{ item }">
@@ -114,7 +122,7 @@
           :tenant-name="item.active_tenant.name"
           :building-id="item.rental_building_id"
         />
-        <span v-else class="text-sm font-medium text-emerald-700">Available</span>
+        <span v-else class="text-sm font-medium text-emerald-700 dark:text-emerald-400">Available</span>
       </template>
 
       <template #actions="{ item }">
@@ -128,39 +136,36 @@
           Delete
         </button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
     <AppDialog v-model:open="showForm" :title="editing ? 'Edit unit' : 'Add unit'" size="md">
       <div class="grid gap-4">
-        <label v-if="!editing" class="label-field">
-          Building
+        <FormField v-if="!editing" label="Building" required>
           <BuildingSearchSelect
             v-model="form.rental_building_id"
             :buildings="buildings"
             required
           />
-        </label>
-        <label class="label-field">
-          Unit number
+        </FormField>
+        <FormField label="Unit number" required>
           <input v-model="form.house_number" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Floor
+        </FormField>
+        <FormField label="Floor" required>
           <input v-model="form.floor" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Description
+        </FormField>
+        <FormField label="Description" required>
           <input v-model="form.description" class="input-field" required />
-        </label>
-        <label class="label-field">
-          {{ moneyLabel('Monthly rent', 'rental') }}
+        </FormField>
+        <FormField :label="moneyLabel('Monthly rent', 'rental')" required>
           <input v-model="form.monthly_rent" type="number" min="0" step="0.01" class="input-field" required />
-        </label>
+        </FormField>
       </div>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400" role="alert">{{ error }}</p>
       <template #footer>
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-secondary w-full sm:w-auto" :disabled="saving" @click="closeForm">Cancel</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -171,16 +176,25 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
+import FormField from '../../components/ui/FormField.vue'
+import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
-import DashboardMetricCard from '../../components/dashboard/DashboardMetricCard.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import { createUnit, deleteUnit, fetchBuildings, fetchUnits, updateUnit } from '../../api/rental'
-import { formatMoney, moneyLabel } from '../../utils/money'
+import { moneyLabel } from '../../utils/money'
+
+const { confirm } = useConfirm()
+const toast = useToast()
 
 const buildings = ref([])
-const units = ref([])
 const summary = ref(null)
+const saving = ref(false)
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
@@ -193,11 +207,31 @@ const form = reactive({
   monthly_rent: '',
 })
 
+const {
+  items,
+  loading,
+  search,
+  pagination,
+  load,
+  reload,
+  goToPage,
+  setPerPage,
+  onSearchChange,
+} = usePaginatedList(async (params) => {
+  const response = await fetchUnits({
+    ...params,
+    building_id: filters.building_id || undefined,
+    status: filters.status || undefined,
+  })
+  summary.value = response.summary ?? null
+  return response
+})
+
 const columns = [
   { key: 'house_number', label: 'Unit', cardTitle: true },
   { key: 'building_name', label: 'Building', mobileCard: true },
   { key: 'description', label: 'Description', tabletCard: true },
-  { key: 'monthly_rent', label: 'Monthly rent', align: 'right', mobileCard: true },
+  { key: 'monthly_rent', label: 'Monthly rent', align: 'right', money: true, mobileCard: true },
   { key: 'status', label: 'Status', tabletCard: true },
   { key: 'occupant', label: 'Occupant', mobileCard: true },
 ]
@@ -218,27 +252,25 @@ function statusVariant(status) {
 
 function unitRowClass(item) {
   if (item.status !== 'vacant') return ''
-
   return 'border-emerald-200 bg-emerald-50 hover:bg-emerald-100/80 dark:border-emerald-800 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/50'
 }
 
 function setStatus(status) {
   filters.status = status
-  load()
+  reload()
 }
 
 async function loadBuildings() {
-  const response = await fetchBuildings()
-  buildings.value = response.data
+  try {
+    const response = await fetchBuildings()
+    buildings.value = response.data
+  } catch {
+    toast.error('Could not load buildings.')
+  }
 }
 
-async function load() {
-  const params = {}
-  if (filters.building_id) params.building_id = filters.building_id
-  if (filters.status) params.status = filters.status
-  const response = await fetchUnits(params)
-  units.value = response.data
-  summary.value = response.summary ?? null
+async function loadTable() {
+  await reload()
 }
 
 function openCreate() {
@@ -273,6 +305,7 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     const payload = {
       house_number: form.house_number,
@@ -282,23 +315,34 @@ async function save() {
     }
     if (editing.value) {
       await updateUnit(editing.value.id, payload)
+      toast.success('Unit updated.')
     } else {
       await createUnit({ ...payload, rental_building_id: form.rental_building_id })
+      toast.success('Unit created.')
     }
     closeForm()
-    await load()
+    await reload()
   } catch (e) {
     error.value = e.response?.data?.message || 'Could not save unit.'
+  } finally {
+    saving.value = false
   }
 }
 
 async function remove(unit) {
-  if (!confirm(`Delete unit ${unit.house_number}?`)) return
+  const ok = await confirm({
+    title: 'Delete unit',
+    message: `Delete unit ${unit.house_number}? This cannot be undone.`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await deleteUnit(unit.id)
-    await load()
+    toast.success('Unit deleted.')
+    await reload()
   } catch (e) {
-    alert(e.response?.data?.message || 'Could not delete unit.')
+    toast.error(e.response?.data?.message || 'Could not delete unit.')
   }
 }
 

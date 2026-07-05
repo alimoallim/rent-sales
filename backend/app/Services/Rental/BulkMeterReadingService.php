@@ -14,6 +14,7 @@ class BulkMeterReadingService
     public function __construct(
         private readonly WaterBillService $waterBillService,
         private readonly ElectricityBillService $electricityBillService,
+        private readonly MeterReadingResolver $meterReadingResolver,
     ) {}
 
     /**
@@ -46,15 +47,6 @@ class BulkMeterReadingService
             return $this->gridPayload($utility, $buildingId, $month, $year, []);
         }
 
-        /** @var Collection<int, TenantWaterBill|TenantElectricityBill> $latestBills */
-        $latestBills = $billModel::query()
-            ->whereIn('tenant_id', $tenantIds)
-            ->orderByDesc('billing_year')
-            ->orderByDesc('billing_month')
-            ->get()
-            ->unique('tenant_id')
-            ->keyBy('tenant_id');
-
         /** @var Collection<int, TenantWaterBill|TenantElectricityBill> $periodBills */
         $periodBills = $billModel::query()
             ->where('rental_building_id', $buildingId)
@@ -66,19 +58,20 @@ class BulkMeterReadingService
 
         $averageConsumptions = $this->averageConsumptions($billModel, $tenantIds);
 
-        $rows = $tenants->map(function (Tenant $tenant) use ($latestBills, $periodBills, $averageConsumptions): array {
-            $latest = $latestBills->get($tenant->id);
+        $rows = $tenants->map(function (Tenant $tenant) use ($billModel, $month, $year, $periodBills, $averageConsumptions): array {
             $periodBill = $periodBills->get($tenant->id);
-            $previousReading = $latest ? (int) $latest->current_reading : 0;
+            $readingContext = $this->meterReadingResolver->context($billModel, $tenant->id, $month, $year);
 
             return [
                 'tenant_id' => $tenant->id,
                 'tenant_name' => $tenant->name,
                 'unit_label' => $tenant->unit?->house_number,
                 'unit_floor' => $tenant->unit?->floor,
-                'previous_reading' => $previousReading,
-                'default_rate' => $latest ? (string) $latest->rate : '50.00',
-                'default_fixed_fee' => $latest ? (string) $latest->fixed_fee : '0.00',
+                'previous_reading' => $readingContext['previous_reading'],
+                'previous_reading_locked' => $readingContext['previous_reading_locked'],
+                'is_first_reading' => $readingContext['is_first_reading'],
+                'default_rate' => $readingContext['default_rate'],
+                'default_fixed_fee' => $readingContext['default_fixed_fee'],
                 'average_consumption' => $averageConsumptions->get($tenant->id),
                 'already_recorded' => $periodBill !== null,
                 'existing_bill_id' => $periodBill?->id,
@@ -146,7 +139,24 @@ class BulkMeterReadingService
                 continue;
             }
 
-            $previousReading = (int) $row['previous_reading'];
+            if ($row['is_first_reading']) {
+                $previousReading = array_key_exists('previous_reading', $entry) && $entry['previous_reading'] !== null && $entry['previous_reading'] !== ''
+                    ? (int) $entry['previous_reading']
+                    : 0;
+            } else {
+                if (array_key_exists('previous_reading', $entry) && $entry['previous_reading'] !== null && (int) $entry['previous_reading'] !== (int) $row['previous_reading']) {
+                    $errorCount++;
+                    $results[] = [
+                        'tenant_id' => $tenantId,
+                        'status' => 'error',
+                        'message' => 'Previous reading is fixed from the last recorded meter reading and cannot be changed.',
+                    ];
+
+                    continue;
+                }
+
+                $previousReading = (int) $row['previous_reading'];
+            }
 
             if ($currentReading < $previousReading) {
                 $errorCount++;

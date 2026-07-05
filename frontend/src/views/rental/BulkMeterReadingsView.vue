@@ -3,6 +3,7 @@
     <PageHeader
       title="Bulk meter readings"
       subtitle="Record water or electricity readings for every metered tenant in one fast, keyboard-friendly session."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Bulk readings' }]"
     />
 
     <!-- Setup panel -->
@@ -93,52 +94,29 @@
     <p v-if="error" class="alert-error">{{ error }}</p>
 
     <!-- Empty: no building -->
-    <div v-if="!filters.building_id && !loading" class="bulk-meter-empty content-panel">
-      <div class="bulk-meter-empty-icon" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" d="M3 9.5 12 4l9 5.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5Z" />
-          <path stroke-linecap="round" d="M9 21V12h6v9" />
-        </svg>
-      </div>
-      <p class="bulk-meter-empty-title">Select a building to begin</p>
-      <p class="bulk-meter-empty-text">Choose the property and billing period above, then load the tenant list to start entering readings.</p>
+    <div v-if="!filters.building_id && !loading" class="content-panel">
+      <EmptyState
+        title="Select a building to begin"
+        description="Choose the property and billing period above, then load the tenant list to start entering readings."
+      />
     </div>
 
     <!-- Empty: no metered tenants -->
-    <div v-else-if="!loading && filters.building_id && loadedOnce && (!grid || grid.rows.length === 0)" class="bulk-meter-empty content-panel">
-      <div class="bulk-meter-empty-icon bulk-meter-empty-icon-muted" aria-hidden="true">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path stroke-linecap="round" d="M12 8v4m0 4h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
-        </svg>
-      </div>
-      <p class="bulk-meter-empty-title">No metered tenants found</p>
-      <p class="bulk-meter-empty-text">
-        No active tenants in <strong>{{ selectedBuildingName }}</strong> require
-        {{ filters.utility === 'water' ? 'water' : 'electricity' }} metering.
-        Enable metering on tenant profiles or pick another building.
-      </p>
+    <div v-else-if="!loading && filters.building_id && loadedOnce && (!grid || grid.rows.length === 0)" class="content-panel">
+      <EmptyState
+        title="No metered tenants found"
+        :description="`No active tenants in ${selectedBuildingName} require ${filters.utility === 'water' ? 'water' : 'electricity'} metering. Enable metering on tenant profiles or pick another building.`"
+      />
     </div>
 
     <!-- Loaded grid -->
     <template v-else-if="grid && grid.rows.length > 0">
-      <div class="bulk-meter-stats">
-        <div class="bulk-meter-stat-card">
-          <p class="bulk-meter-stat-label">To enter</p>
-          <p class="bulk-meter-stat-value">{{ editableCount }}</p>
-        </div>
-        <div class="bulk-meter-stat-card bulk-meter-stat-card-primary">
-          <p class="bulk-meter-stat-label">Filled</p>
-          <p class="bulk-meter-stat-value">{{ toSaveCount }}</p>
-        </div>
-        <div class="bulk-meter-stat-card bulk-meter-stat-card-success">
-          <p class="bulk-meter-stat-label">Already saved</p>
-          <p class="bulk-meter-stat-value">{{ recordedCount }}</p>
-        </div>
-        <div class="bulk-meter-stat-card bulk-meter-stat-card-warning">
-          <p class="bulk-meter-stat-label">Warnings</p>
-          <p class="bulk-meter-stat-value">{{ warningCount }}</p>
-        </div>
-      </div>
+      <KpiStrip class="bulk-meter-stats">
+        <KpiCard label="To enter" :value="String(editableCount)" accent="neutral" />
+        <KpiCard label="Filled" :value="String(toSaveCount)" accent="info" />
+        <KpiCard label="Already saved" :value="String(recordedCount)" accent="success" />
+        <KpiCard label="Warnings" :value="String(warningCount)" accent="warning" />
+      </KpiStrip>
 
       <div class="bulk-meter-progress content-panel">
         <div class="bulk-meter-progress-meta">
@@ -194,7 +172,24 @@
                 </td>
                 <td class="bulk-meter-tenant-name">{{ row.tenant_name }}</td>
                 <td class="text-right">
-                  <span class="bulk-meter-reading-pill bulk-meter-reading-previous">{{ row.previous_reading }}</span>
+                  <input
+                    v-if="!row.already_recorded && row.is_first_reading"
+                    v-model="openingEntries[row.tenant_id]"
+                    type="number"
+                    min="0"
+                    inputmode="numeric"
+                    class="bulk-meter-input bulk-meter-input-opening"
+                    placeholder="Opening"
+                    :aria-label="`Opening reading for ${row.tenant_name}`"
+                    @input="clearRowFeedback(row.tenant_id)"
+                  />
+                  <span
+                    v-else
+                    class="bulk-meter-reading-pill bulk-meter-reading-previous"
+                    :title="row.previous_reading_locked ? 'Carried forward from last month' : undefined"
+                  >
+                    {{ row.previous_reading }}
+                  </span>
                 </td>
                 <td class="text-right">
                   <input
@@ -276,10 +271,7 @@
       </div>
     </template>
 
-    <div v-else-if="loading" class="bulk-meter-loading content-panel">
-      <span class="bulk-meter-load-spinner bulk-meter-load-spinner-lg" aria-hidden="true" />
-      <p class="bulk-meter-loading-text">Loading metered tenants…</p>
-    </div>
+    <TableSkeleton v-else-if="loading" :rows="8" :columns="7" />
 
     <AppDialog v-model:open="showConfirm" title="Confirm bulk save" size="sm">
       <div class="bulk-meter-confirm">
@@ -308,9 +300,16 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import KpiCard from '../../components/ui/KpiCard.vue'
+import KpiStrip from '../../components/ui/KpiStrip.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
+import TableSkeleton from '../../components/data/TableSkeleton.vue'
+import { useToast } from '../../composables/useToast'
 import { fetchBulkMeterReadingGrid, storeBulkMeterReadings } from '../../api/bulkMeterReadings'
 import { fetchBuildings } from '../../api/rental'
+
+const toast = useToast()
 
 const buildings = ref([])
 const grid = ref(null)
@@ -322,6 +321,7 @@ const showConfirm = ref(false)
 const submitSummary = ref('')
 const submitSummaryClass = ref('')
 const entries = reactive({})
+const openingEntries = reactive({})
 const rowErrors = reactive({})
 const rowWarnings = reactive({})
 const inputRefs = ref([])
@@ -395,10 +395,22 @@ function setUtility(utility) {
 
 function resetEntryState() {
   Object.keys(entries).forEach((key) => delete entries[key])
+  Object.keys(openingEntries).forEach((key) => delete openingEntries[key])
   Object.keys(rowErrors).forEach((key) => delete rowErrors[key])
   Object.keys(rowWarnings).forEach((key) => delete rowWarnings[key])
   inputRefs.value = []
   submitSummary.value = ''
+}
+
+function effectivePreviousReading(row) {
+  if (row.is_first_reading) {
+    const raw = openingEntries[row.tenant_id]
+    if (raw === '' || raw === null || raw === undefined) return 0
+    const value = Number(raw)
+    return Number.isFinite(value) ? value : 0
+  }
+
+  return Number(row.previous_reading || 0)
 }
 
 function onFiltersChange() {
@@ -418,7 +430,7 @@ function displayConsumption(row) {
   if (row.already_recorded) return row.existing_consumption
   const current = parseEntryValue(row.tenant_id)
   if (current === null) return null
-  return Math.max(0, current - Number(row.previous_reading || 0))
+  return Math.max(0, current - effectivePreviousReading(row))
 }
 
 function formatConsumption(row) {
@@ -441,12 +453,14 @@ function validateRow(row) {
   const current = parseEntryValue(row.tenant_id)
   if (current === null) return
 
-  if (current < Number(row.previous_reading || 0)) {
-    rowErrors[row.tenant_id] = `Min ${row.previous_reading}`
+  const previous = effectivePreviousReading(row)
+
+  if (current < previous) {
+    rowErrors[row.tenant_id] = `Min ${previous}`
     return
   }
 
-  const consumption = current - Number(row.previous_reading || 0)
+  const consumption = current - previous
   const average = row.average_consumption
 
   if (average !== null && average > 0 && consumption > average * 3) {
@@ -511,13 +525,20 @@ async function loadGrid() {
       billing_month: filters.billing_month,
       billing_year: filters.billing_year,
     })
+    grid.value.rows.forEach((row) => {
+      if (row.is_first_reading && openingEntries[row.tenant_id] === undefined) {
+        openingEntries[row.tenant_id] = row.previous_reading ?? 0
+      }
+    })
     loadedOnce.value = true
 
     await nextTick()
     const firstEditable = grid.value.rows.findIndex((row) => !row.already_recorded)
     if (firstEditable >= 0) focusInput(firstEditable)
   } catch (e) {
-    error.value = e.response?.data?.message || 'Could not load tenant readings.'
+    const message = e.response?.data?.message || 'Could not load tenant readings.'
+    error.value = message
+    toast.error(message)
     grid.value = null
   } finally {
     loading.value = false
@@ -546,10 +567,18 @@ async function submit() {
   saving.value = true
   error.value = ''
 
-  const readings = grid.value.rows.map((row) => ({
-    tenant_id: row.tenant_id,
-    current_reading: row.already_recorded ? null : parseEntryValue(row.tenant_id),
-  }))
+  const readings = grid.value.rows.map((row) => {
+    const reading = {
+      tenant_id: row.tenant_id,
+      current_reading: row.already_recorded ? null : parseEntryValue(row.tenant_id),
+    }
+
+    if (!row.already_recorded && row.is_first_reading) {
+      reading.previous_reading = effectivePreviousReading(row)
+    }
+
+    return reading
+  })
 
   try {
     const result = await storeBulkMeterReadings({
@@ -561,8 +590,14 @@ async function submit() {
     })
 
     showConfirm.value = false
-    submitSummary.value = `Saved ${result.saved_count} readings · ${result.skipped_count} skipped · ${result.error_count} errors`
+    const summaryText = `Saved ${result.saved_count} readings · ${result.skipped_count} skipped · ${result.error_count} errors`
+    submitSummary.value = summaryText
     submitSummaryClass.value = result.error_count > 0 ? 'bulk-meter-summary-warning' : 'bulk-meter-summary-success'
+    if (result.error_count > 0) {
+      toast.error(summaryText)
+    } else {
+      toast.success(`Saved ${result.saved_count} reading${result.saved_count === 1 ? '' : 's'}.`)
+    }
 
     result.results
       .filter((item) => item.status === 'error')
@@ -572,7 +607,9 @@ async function submit() {
 
     await loadGrid()
   } catch (e) {
-    error.value = e.response?.data?.message || 'Could not save bulk readings.'
+    const message = e.response?.data?.message || 'Could not save bulk readings.'
+    error.value = message
+    toast.error(message)
     showConfirm.value = false
   } finally {
     saving.value = false

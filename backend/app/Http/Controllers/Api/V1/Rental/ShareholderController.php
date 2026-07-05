@@ -7,19 +7,24 @@ use App\Http\Requests\Rental\StoreShareholderRequest;
 use App\Http\Requests\Rental\UpdateShareholderRequest;
 use App\Http\Resources\ShareholderResource;
 use App\Models\Shareholder;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class ShareholderController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', Shareholder::class);
 
-        $shareholders = Shareholder::query()
-            ->withCount('bills')
+        $query = Shareholder::query()->withCount('bills');
+
+        ListQuery::applySearch($query, $request, ['name', 'phone', 'address']);
+
+        $shareholders = $query
             ->orderBy('name')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return ShareholderResource::collection($shareholders);
     }

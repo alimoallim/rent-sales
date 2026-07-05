@@ -1,6 +1,10 @@
 <template>
   <section>
-    <PageHeader title="Payroll" subtitle="Employees and monthly salary payments.">
+    <PageHeader
+      title="Payroll"
+      subtitle="Employees and monthly salary payments."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Payroll' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">
           {{ tab === 'payroll' ? 'Record payroll' : 'Add employee' }}
@@ -8,81 +12,117 @@
       </template>
     </PageHeader>
 
-    <div class="filter-bar">
+    <FilterBar>
       <div class="segmented-control">
-        <button type="button" class="segmented-option" :class="tab === 'payroll' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('payroll')">Payroll</button>
-        <button type="button" class="segmented-option" :class="tab === 'employees' ? 'segmented-option-active' : 'text-slate-700'" @click="setTab('employees')">Employees</button>
+        <button
+          type="button"
+          class="segmented-option"
+          :class="{ 'segmented-option-active': tab === 'payroll' }"
+          @click="setTab('payroll')"
+        >
+          Payroll
+        </button>
+        <button
+          type="button"
+          class="segmented-option"
+          :class="{ 'segmented-option-active': tab === 'employees' }"
+          @click="setTab('employees')"
+        >
+          Employees
+        </button>
       </div>
       <BuildingSearchSelect
         v-model="filters.building_id"
         :buildings="buildings"
         include-all
         placeholder="All buildings"
-        @change="load"
+        @change="loadTable"
       />
-    </div>
+    </FilterBar>
 
-    <ResponsiveDataList
+    <DataTable
       v-if="tab === 'payroll'"
-      :items="payroll"
+      v-model:search="payrollSearch"
+      server-side
+      :items="payrollItems"
       :columns="payrollColumns"
+      :loading="payrollLoading"
+      :pagination="payrollPagination"
+      money-module="rental"
       empty-message="No payroll entries."
+      @search="onPayrollSearchChange"
+      @page-change="payrollGoToPage"
+      @per-page-change="setPayrollPerPage"
     >
       <template #cell-period="{ item }">{{ item.billing_month }}/{{ item.billing_year }}</template>
+      <template #cell-salary_amount="{ item }">
+        <MoneyCell :amount="item.salary_amount" module="rental" />
+      </template>
       <template #actions="{ item }">
         <button type="button" class="btn-destructive w-full sm:w-auto" @click="removePayroll(item)">Delete</button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
-    <ResponsiveDataList
+    <DataTable
       v-else
-      :items="employees"
+      v-model:search="employeeSearch"
+      server-side
+      :items="employeeItems"
       :columns="employeeColumns"
+      :loading="employeeLoading"
+      :pagination="employeePagination"
+      money-module="rental"
       empty-message="No employees."
+      @search="onEmployeeSearchChange"
+      @page-change="employeeGoToPage"
+      @per-page-change="setEmployeePerPage"
     >
+      <template #cell-salary="{ item }">
+        <MoneyCell :amount="item.salary" module="rental" />
+      </template>
+      <template #cell-building_name="{ item }">
+        {{ item.building_name || '—' }}
+      </template>
+      <template #cell-status="{ item }">
+        <StatusBadge :variant="item.status === 'current' ? 'success' : 'neutral'" :label="item.status" />
+      </template>
       <template #actions="{ item }">
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEditEmployee(item)">Edit</button>
         <button type="button" class="btn-destructive w-full sm:w-auto" @click="removeEmployee(item)">Delete</button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
     <AppDialog v-model:open="showForm" :title="formTitle" size="md" :close-on-backdrop="false">
       <div v-if="tab === 'payroll'" class="grid gap-4">
-        <label class="label-field">
-          Building
+        <FormField label="Building" required>
           <BuildingSearchSelect
             v-model="payrollForm.rental_building_id"
             :buildings="buildings"
             required
             @change="loadEmployeesForForm"
           />
-        </label>
-        <label class="label-field">
-          Employee
+        </FormField>
+        <FormField label="Employee" required>
           <EmployeeSearchSelect
             v-model="payrollForm.employee_id"
             :employees="formEmployees"
             required
           />
-        </label>
-        <label class="label-field">
-          Month
+        </FormField>
+        <FormField label="Month" required>
           <select v-model="payrollForm.billing_month" class="input-field" required>
             <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
           </select>
-        </label>
-        <label class="label-field">
-          Year
+        </FormField>
+        <FormField label="Year" required>
           <input v-model="payrollForm.billing_year" type="number" min="2000" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Paid on
+        </FormField>
+        <FormField label="Paid on" required>
           <input v-model="payrollForm.paid_at" type="date" class="input-field" required />
-        </label>
+        </FormField>
       </div>
       <div v-else class="grid gap-4">
-        <label class="label-field">
-          Building
+        <FormField label="Building">
           <BuildingSearchSelect
             v-model="employeeForm.rental_building_id"
             :buildings="buildings"
@@ -90,35 +130,32 @@
             all-label="Unassigned"
             placeholder="Unassigned"
           />
-        </label>
-        <label class="label-field">
-          Name
+        </FormField>
+        <FormField label="Name" required>
           <input v-model="employeeForm.name" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Position
+        </FormField>
+        <FormField label="Position" required>
           <input v-model="employeeForm.position" class="input-field" required />
-        </label>
-        <label class="label-field">
-          {{ moneyLabel('Base salary', 'rental') }}
+        </FormField>
+        <FormField :label="moneyLabel('Base salary', 'rental')" required>
           <input v-model="employeeForm.salary" type="number" min="0" step="0.01" class="input-field" required />
-        </label>
-        <label class="label-field">
-          Phone
+        </FormField>
+        <FormField label="Phone">
           <input v-model="employeeForm.phone" class="input-field" />
-        </label>
-        <label v-if="editingEmployee" class="label-field">
-          Status
+        </FormField>
+        <FormField v-if="editingEmployee" label="Status">
           <select v-model="employeeForm.status" class="input-field">
             <option value="current">Current</option>
             <option value="former">Former</option>
           </select>
-        </label>
+        </FormField>
       </div>
-      <p v-if="error" class="mt-3 text-sm text-red-600">{{ error }}</p>
+      <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400">{{ error }}</p>
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="button" class="btn-primary w-full sm:w-auto" @click="save">Save</button>
+        <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
+          {{ saving ? 'Saving…' : 'Save' }}
+        </button>
       </template>
     </AppDialog>
   </section>
@@ -130,7 +167,14 @@ import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import EmployeeSearchSelect from '../../components/ui/EmployeeSearchSelect.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
+import FormField from '../../components/ui/FormField.vue'
+import StatusBadge from '../../components/ui/StatusBadge.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import {
   createEmployee,
   createPayrollEntry,
@@ -141,18 +185,55 @@ import {
   fetchPayroll,
   updateEmployee,
 } from '../../api/rental'
-import { formatMoney, moneyLabel } from '../../utils/money'
+import { moneyLabel } from '../../utils/money'
+
+const { confirm } = useConfirm()
+const toast = useToast()
 
 const buildings = ref([])
-const payroll = ref([])
-const employees = ref([])
 const formEmployees = ref([])
+const saving = ref(false)
 const tab = ref('payroll')
 const showForm = ref(false)
 const editingEmployee = ref(null)
 const error = ref('')
 const filters = reactive({ building_id: '' })
 const now = new Date()
+
+const {
+  items: payrollItems,
+  loading: payrollLoading,
+  search: payrollSearch,
+  pagination: payrollPagination,
+  load: loadPayroll,
+  reload: reloadPayroll,
+  goToPage: payrollGoToPage,
+  setPerPage: setPayrollPerPage,
+  onSearchChange: onPayrollSearchChange,
+} = usePaginatedList((params) =>
+  fetchPayroll({
+    ...params,
+    building_id: filters.building_id || undefined,
+  }),
+)
+
+const {
+  items: employeeItems,
+  loading: employeeLoading,
+  search: employeeSearch,
+  pagination: employeePagination,
+  load: loadEmployees,
+  reload: reloadEmployees,
+  goToPage: employeeGoToPage,
+  setPerPage: setEmployeePerPage,
+  onSearchChange: onEmployeeSearchChange,
+} = usePaginatedList((params) =>
+  fetchEmployees({
+    ...params,
+    building_id: filters.building_id || undefined,
+    status: 'current',
+  }),
+)
 
 const payrollColumns = [
   { key: 'employee_name', label: 'Employee', cardTitle: true },
@@ -165,7 +246,7 @@ const employeeColumns = [
   { key: 'name', label: 'Name', cardTitle: true },
   { key: 'salary', label: 'Salary', align: 'right', money: true, mobileCard: true },
   { key: 'position', label: 'Position', mobileCard: true },
-  { key: 'building_name', label: 'Building', tabletCard: true, format: (row) => row.building_name || '—' },
+  { key: 'building_name', label: 'Building', tabletCard: true },
   { key: 'status', label: 'Status', mobileCard: true },
 ]
 
@@ -197,26 +278,26 @@ const formTitle = computed(() => {
   return editingEmployee.value ? 'Edit employee' : 'Add employee'
 })
 
-
-
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
 }
 
-async function load() {
-  const params = {}
-  if (filters.building_id) params.building_id = filters.building_id
+async function loadTable() {
   if (tab.value === 'payroll') {
-    payroll.value = (await fetchPayroll(params)).data
+    await reloadPayroll()
   } else {
-    employees.value = (await fetchEmployees({ ...params, status: 'current' })).data
+    await reloadEmployees()
   }
 }
 
 function setTab(next) {
   tab.value = next
-  load()
+  if (next === 'payroll') {
+    loadPayroll()
+  } else {
+    loadEmployees()
+  }
 }
 
 async function loadEmployeesForForm() {
@@ -276,39 +357,67 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+  saving.value = true
   try {
     if (tab.value === 'payroll') {
       await createPayrollEntry(payrollForm)
+      toast.success('Payroll recorded.')
     } else if (editingEmployee.value) {
       await updateEmployee(editingEmployee.value.id, employeeForm)
+      toast.success('Employee updated.')
     } else {
       await createEmployee(employeeForm)
+      toast.success('Employee added.')
     }
     closeForm()
-    await load()
+    if (tab.value === 'payroll') {
+      await reloadPayroll()
+    } else {
+      await reloadEmployees()
+    }
   } catch (e) {
     error.value = e.response?.data?.message || 'Could not save.'
+  } finally {
+    saving.value = false
   }
 }
 
 async function removePayroll(entry) {
-  if (!window.confirm(`Delete payroll for ${entry.employee_name}?`)) return
-  await deletePayrollEntry(entry.id)
-  await load()
+  const ok = await confirm({
+    title: 'Delete payroll entry',
+    message: `Delete payroll for ${entry.employee_name}?`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
+  try {
+    await deletePayrollEntry(entry.id)
+    toast.success('Payroll entry deleted.')
+    await reloadPayroll()
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Could not delete payroll entry.')
+  }
 }
 
 async function removeEmployee(employee) {
-  if (!window.confirm(`Delete ${employee.name}?`)) return
+  const ok = await confirm({
+    title: 'Delete employee',
+    message: `Delete ${employee.name}?`,
+    confirmLabel: 'Delete',
+    variant: 'danger',
+  })
+  if (!ok) return
   try {
     await deleteEmployee(employee.id)
-    await load()
+    toast.success('Employee deleted.')
+    await reloadEmployees()
   } catch (e) {
-    window.alert(e.response?.data?.message || 'Could not delete employee.')
+    toast.error(e.response?.data?.message || 'Could not delete employee.')
   }
 }
 
 onMounted(async () => {
   await loadBuildings()
-  await load()
+  await loadPayroll()
 })
 </script>

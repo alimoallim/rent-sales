@@ -5,7 +5,7 @@
       <div
         v-for="(item, index) in items"
         :key="rowKeyValue(item, index)"
-        class="card-surface p-3 transition-all duration-200"
+        class="card-surface p-3.5 transition-all duration-200 hover:border-zinc-300 hover:shadow-md dark:hover:border-zinc-600"
         :class="resolveRowClass(item)"
       >
         <p v-if="titleColumn" class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
@@ -73,64 +73,68 @@
 
     <!-- Desktop: ERP data grid -->
     <div class="table-shell hidden lg:block">
-      <table class="min-w-full text-sm">
-        <thead class="border-b border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 text-left">
-          <tr>
-            <th
-              v-for="col in columns"
-              :key="col.key"
-              class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400"
-              :class="col.align === 'right' ? 'text-right' : ''"
+      <div class="table-scroll">
+        <table class="data-grid min-w-full text-sm">
+          <thead class="data-grid-head">
+            <tr>
+              <th
+                v-for="col in columns"
+                :key="col.key"
+                class="data-grid-th"
+                :class="col.align === 'right' ? 'text-right' : ''"
+              >
+                {{ col.label }}
+              </th>
+              <th v-if="$slots.actions" class="data-grid-th text-right">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody class="data-grid-body">
+            <tr
+              v-for="(item, index) in items"
+              :key="rowKeyValue(item, index)"
+              class="data-grid-row"
+              :class="resolveRowClass(item)"
             >
-              {{ col.label }}
-            </th>
-            <th v-if="$slots.actions" class="px-3 py-2 text-right text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
-          <tr
-            v-for="(item, index) in items"
-            :key="rowKeyValue(item, index)"
-            class="transition-colors duration-200"
-            :class="resolveRowClass(item) || 'hover:bg-zinc-50 dark:hover:bg-zinc-900/50'"
-          >
-            <td
-              v-for="col in columns"
-              :key="col.key"
-              class="px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300"
-              :class="[
-                col.align === 'right' ? 'text-right tabular-nums' : '',
-                col.key === titleColumn?.key ? 'font-medium text-zinc-900 dark:text-zinc-100' : '',
-              ]"
-            >
-              <slot :name="`cell-${col.key}`" :item="item" :column="col">
-                {{ formatValue(item, col) }}
-              </slot>
-            </td>
-            <td v-if="$slots.actions" class="px-3 py-2 text-right">
-              <slot name="actions" :item="item" />
-            </td>
-          </tr>
-          <tr v-if="items.length === 0">
-            <td
-              :colspan="columns.length + ($slots.actions ? 1 : 0)"
-              class="empty-state"
-            >
-              {{ emptyMessage }}
-            </td>
-          </tr>
-        </tbody>
-        <tfoot v-if="footerLabel && items.length" class="border-t border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 font-semibold text-zinc-900 dark:text-zinc-100">
-          <tr>
-            <td :colspan="Math.max(columns.length - 1 + ($slots.actions ? 1 : 0), 1)" class="px-3 py-2 text-sm">
-              {{ footerLabel }}
-            </td>
-            <td class="px-3 py-2 text-right text-sm tabular-nums">{{ footerValue }}</td>
-          </tr>
-        </tfoot>
-      </table>
+              <td
+                v-for="col in columns"
+                :key="col.key"
+                class="data-grid-td"
+                :class="[
+                  col.align === 'right' ? 'text-right tabular-nums' : '',
+                  col.key === titleColumn?.key ? 'font-medium text-zinc-900 dark:text-zinc-100' : '',
+                ]"
+              >
+                <slot :name="`cell-${col.key}`" :item="item" :column="col">
+                  {{ formatValue(item, col) }}
+                </slot>
+              </td>
+              <td v-if="$slots.actions" class="data-grid-td text-right">
+                <div class="flex flex-wrap justify-end gap-1.5">
+                  <slot name="actions" :item="item" />
+                </div>
+              </td>
+            </tr>
+            <tr v-if="items.length === 0">
+              <td
+                :colspan="columns.length + ($slots.actions ? 1 : 0)"
+                class="data-grid-empty"
+              >
+                {{ emptyMessage }}
+              </td>
+            </tr>
+          </tbody>
+          <tfoot v-if="footerLabel && items.length" class="data-grid-foot">
+            <tr>
+              <td :colspan="Math.max(columns.length - 1 + ($slots.actions ? 1 : 0), 1)" class="data-grid-td">
+                {{ footerLabel }}
+              </td>
+              <td class="data-grid-td text-right tabular-nums">{{ footerValue }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
     </div>
   </div>
 </template>

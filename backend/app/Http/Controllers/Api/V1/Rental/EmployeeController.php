@@ -8,6 +8,7 @@ use App\Http\Requests\Rental\StoreEmployeeRequest;
 use App\Http\Requests\Rental\UpdateEmployeeRequest;
 use App\Http\Resources\EmployeeResource;
 use App\Models\Employee;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,12 +19,16 @@ class EmployeeController extends Controller
     {
         $this->authorize('viewAny', Employee::class);
 
-        $employees = Employee::query()
+        $query = Employee::query()
             ->with('building')
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('rental_building_id', $id))
-            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status))
+            ->when($request->string('status')->toString(), fn ($q, $status) => $q->where('status', $status));
+
+        ListQuery::applySearch($query, $request, ['name', 'phone', 'position', 'address']);
+
+        $employees = $query
             ->orderBy('name')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return EmployeeResource::collection($employees);
     }

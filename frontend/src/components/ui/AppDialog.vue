@@ -22,7 +22,7 @@
           </div>
           <button
             type="button"
-            class="touch-target -mr-1 rounded-md p-1.5 text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover text-zinc-700 dark:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
+            class="touch-target -mr-1 rounded-md p-1.5 text-zinc-400 transition-all duration-200 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1"
             aria-label="Close"
             @click="close"
           >

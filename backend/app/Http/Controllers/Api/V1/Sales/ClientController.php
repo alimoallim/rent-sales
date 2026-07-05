@@ -11,6 +11,7 @@ use App\Http\Resources\ClientResource;
 use App\Models\Client;
 use App\Services\Sales\ClientBalanceCalculator;
 use App\Services\Sales\ClientService;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -28,14 +29,27 @@ class ClientController extends Controller
 
         $status = $request->string('status', ClientStatus::Active->value)->toString();
 
-        $clients = Client::query()
+        $query = Client::query()
             ->with(['building', 'unit'])
             ->withCount('payments')
             ->when($request->integer('building_id'), fn ($query, $buildingId) => $query->where('sale_building_id', $buildingId))
             ->when($request->boolean('with_balance'), fn ($query) => $query->where('status', ClientStatus::Active))
-            ->where('status', $status)
+            ->where('status', $status);
+
+        ListQuery::applySearch($query, $request, ['name', 'phone', 'email', 'passport_or_id', 'voucher_number'], [
+            'building' => 'name',
+            'unit' => 'house_number',
+        ]);
+
+        if ($status === ClientStatus::Active->value && $request->boolean('with_balance')) {
+            $this->restrictToClientsWithBalance($query);
+        }
+
+        $summary = $this->clientIndexSummary($query, $status);
+
+        $clients = $query
             ->orderBy('name')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         if ($status === ClientStatus::Active->value) {
             $clients->getCollection()->transform(function (Client $client): Client {
@@ -43,15 +57,65 @@ class ClientController extends Controller
 
                 return $client;
             });
-
-            if ($request->boolean('with_balance')) {
-                $clients->setCollection(
-                    $clients->getCollection()->filter(fn (Client $client): bool => bccomp($client->balance, '0', 2) > 0)->values(),
-                );
-            }
         }
 
-        return ClientResource::collection($clients);
+        return ClientResource::collection($clients)->additional([
+            'summary' => $summary,
+        ]);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Client>  $query
+     * @return array<string, int|string>
+     */
+    private function clientIndexSummary($query, string $status): array
+    {
+        $total = (clone $query)->count();
+        $totalAgreed = (string) (clone $query)->sum('agreed_sale_price');
+
+        if ($status !== ClientStatus::Active->value) {
+            return [
+                'total' => $total,
+                'total_agreed' => $totalAgreed,
+            ];
+        }
+
+        $withBalance = 0;
+        $totalOutstanding = '0.00';
+        $totalCollected = '0.00';
+
+        (clone $query)->orderBy('name')->each(function (Client $client) use (&$withBalance, &$totalOutstanding, &$totalCollected): void {
+            $summary = $this->balanceCalculator->summary($client);
+            $totalCollected = bcadd($totalCollected, $summary['paid_total'], 2);
+
+            if (bccomp($summary['balance'], '0', 2) > 0) {
+                $withBalance++;
+                $totalOutstanding = bcadd($totalOutstanding, $summary['balance'], 2);
+            }
+        });
+
+        return [
+            'total' => $total,
+            'with_balance' => $withBalance,
+            'total_outstanding' => $totalOutstanding,
+            'total_collected' => $totalCollected,
+            'total_agreed' => $totalAgreed,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Client>  $query
+     */
+    private function restrictToClientsWithBalance($query): void
+    {
+        $owingIds = (clone $query)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (Client $client): bool => bccomp($this->balanceCalculator->calculate($client), '0', 2) > 0)
+            ->pluck('id')
+            ->all();
+
+        $query->whereIn('id', $owingIds !== [] ? $owingIds : [0]);
     }
 
     public function store(StoreClientRequest $request): ClientResource

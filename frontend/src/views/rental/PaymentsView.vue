@@ -1,30 +1,42 @@
 <template>
   <section>
-    <PageHeader title="Payments" subtitle="Record rent, water, and service payments in one place.">
+    <PageHeader
+      title="Payments"
+      subtitle="Record rent, water, and service payments in one place."
+      :breadcrumbs="[{ label: 'Rental', to: '/rental' }, { label: 'Payments' }]"
+    >
       <template #actions>
         <button type="button" class="btn-primary w-full sm:w-auto" @click="openCreate">Record payment</button>
       </template>
     </PageHeader>
 
-    <div class="filter-bar">
+    <FilterBar>
       <BuildingSearchSelect
         v-model="filters.building_id"
         :buildings="buildings"
         include-all
         placeholder="All buildings"
-        @change="load"
+        @change="loadTable"
       />
-      <select v-model="filters.status" class="input-field" @change="load">
+      <select v-model="filters.status" class="input-field" @change="loadTable">
         <option value="">All statuses</option>
         <option value="active">Active</option>
         <option value="voided">Voided</option>
       </select>
-    </div>
+    </FilterBar>
 
-    <ResponsiveDataList
-      :items="payments"
+    <DataTable
+      v-model:search="search"
+      server-side
+      :items="items"
       :columns="paymentColumns"
+      :loading="loading"
+      :pagination="pagination"
+      money-module="rental"
       empty-message="No payments recorded yet."
+      @search="onSearchChange"
+      @page-change="goToPage"
+      @per-page-change="setPerPage"
     >
       <template #card-title-tenant_name="{ item }">
         <TenantNameMenu
@@ -39,6 +51,15 @@
           :tenant-name="item.tenant_name"
           :building-id="item.rental_building_id"
         />
+      </template>
+      <template #cell-paid_at="{ item }">
+        <DateCell :value="item.paid_at" />
+      </template>
+      <template #cell-amount="{ item }">
+        <MoneyCell :amount="item.amount" module="rental" />
+      </template>
+      <template #cell-discount="{ item }">
+        <MoneyCell :amount="item.discount" module="rental" />
       </template>
       <template #cell-status="{ item }">
         <StatusBadge :variant="item.status === 'active' ? 'success' : 'neutral'" :label="item.status" />
@@ -61,7 +82,7 @@
           Void
         </button>
       </template>
-    </ResponsiveDataList>
+    </DataTable>
 
     <AppDialog
       v-model:open="showForm"
@@ -171,9 +192,9 @@
           type="submit"
           form="payment-form"
           class="btn-primary w-full sm:w-auto"
-          :disabled="paymentBlocked"
+          :disabled="paymentBlocked || saving"
         >
-          Save payment
+          {{ saving ? 'Saving…' : 'Save payment' }}
         </button>
       </template>
     </AppDialog>
@@ -187,11 +208,17 @@ import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import TenantSearchSelect from '../../components/ui/TenantSearchSelect.vue'
+import FilterBar from '../../components/ui/FilterBar.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
-import ResponsiveDataList from '../../components/data/ResponsiveDataList.vue'
+import DataTable from '../../components/data/DataTable.vue'
+import DateCell from '../../components/data/DateCell.vue'
+import MoneyCell from '../../components/data/MoneyCell.vue'
 import BalanceBreakdown from '../../components/rental/BalanceBreakdown.vue'
 import MeterReadingBanner from '../../components/rental/MeterReadingBanner.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
+import { useConfirm } from '../../composables/useConfirm'
+import { usePaginatedList } from '../../composables/usePaginatedList'
+import { useToast } from '../../composables/useToast'
 import {
   createPayment,
   fetchBuildings,
@@ -204,9 +231,11 @@ import {
 import { formatMoney, amountLabel, moneyLabel } from '../../utils/money'
 
 const router = useRouter()
+const { confirm } = useConfirm()
+const toast = useToast()
 
 const buildings = ref([])
-const payments = ref([])
+const saving = ref(false)
 const activeTenants = ref([])
 const showForm = ref(false)
 const editing = ref(null)
@@ -224,12 +253,7 @@ const form = reactive({
 })
 
 const paymentColumns = [
-  {
-    key: 'paid_at',
-    label: 'Date',
-    mobileCard: true,
-    format: (row) => formatDate(row.paid_at),
-  },
+  { key: 'paid_at', label: 'Date', mobileCard: true },
   { key: 'tenant_name', label: 'Tenant', cardTitle: true },
   { key: 'building_name', label: 'Building', tabletCard: true },
   { key: 'amount', label: 'Amount', align: 'right', money: true, mobileCard: true },
@@ -246,12 +270,23 @@ const wouldOverpay = computed(() => {
 
 const paymentBlocked = computed(() => Boolean(summary.value?.payment_blocked))
 
-
-
-function formatDate(value) {
-  if (!value) return '—'
-  return new Date(value).toLocaleDateString('en-KE')
-}
+const {
+  items,
+  loading,
+  search,
+  pagination,
+  load,
+  reload,
+  goToPage,
+  setPerPage,
+  onSearchChange,
+} = usePaginatedList((params) =>
+  fetchPayments({
+    ...params,
+    building_id: filters.building_id || undefined,
+    status: filters.status || undefined,
+  }),
+)
 
 async function loadBuildings() {
   const response = await fetchBuildings()
@@ -292,12 +327,8 @@ async function loadSummary() {
   }
 }
 
-async function load() {
-  const params = {}
-  if (filters.building_id) params.building_id = filters.building_id
-  if (filters.status) params.status = filters.status
-  const response = await fetchPayments(params)
-  payments.value = response.data
+async function loadTable() {
+  await reload()
 }
 
 function onBuildingChange() {
@@ -323,11 +354,11 @@ function goToMeterReading(reminder) {
   })
 }
 
-function openCreate() {
+function openCreate(prefill = {}) {
   editing.value = null
   Object.assign(form, {
-    tenant_id: '',
-    rental_building_id: filters.building_id || '',
+    tenant_id: prefill.tenant_id ? String(prefill.tenant_id) : '',
+    rental_building_id: prefill.rental_building_id ? String(prefill.rental_building_id) : (filters.building_id || ''),
     amount: '',
     discount: '',
     paid_at: new Date().toISOString().slice(0, 10),
@@ -336,7 +367,11 @@ function openCreate() {
   error.value = ''
   summary.value = null
   showForm.value = true
-  loadTenants(form.rental_building_id)
+  loadTenants(form.rental_building_id).then(() => {
+    if (form.tenant_id) {
+      loadSummary()
+    }
+  })
 }
 
 function openEdit(payment) {
@@ -384,13 +419,18 @@ async function save() {
   }
 
   if (wouldOverpay.value) {
-    const confirmed = window.confirm(
-      `This payment (${formatMoney(paymentTotal.value, 'rental')}) is more than the tenant owes (${formatMoney(summary.value?.total_due || 0, 'rental')}). `
+    const ok = await confirm({
+      title: 'Record overpayment?',
+      message:
+        `This payment (${formatMoney(paymentTotal.value, 'rental')}) is more than the tenant owes (${formatMoney(summary.value?.total_due || 0, 'rental')}). `
         + 'The extra will be kept as credit. Only continue if this overpayment is intentional.',
-    )
-    if (!confirmed) return
+      confirmLabel: 'Record payment',
+      variant: 'warning',
+    })
+    if (!ok) return
   }
 
+  saving.value = true
   const payload = {
     tenant_id: form.tenant_id,
     rental_building_id: form.rental_building_id,
@@ -404,27 +444,38 @@ async function save() {
   try {
     if (editing.value) {
       await updatePayment(editing.value.id, payload)
+      toast.success('Payment updated.')
     } else {
       await createPayment(payload)
+      toast.success('Payment recorded.')
     }
     closeForm()
-    await load()
+    await reload()
   } catch (e) {
     const validation = e.response?.data?.errors
     error.value = validation
       ? Object.values(validation).flat().join(' ')
       : e.response?.data?.message || 'Could not save payment.'
+  } finally {
+    saving.value = false
   }
 }
 
 async function voidOne(payment) {
-  if (!window.confirm(`Void payment of ${formatMoney(payment.amount, 'rental')} for ${payment.tenant_name}?`)) return
+  const ok = await confirm({
+    title: 'Void payment',
+    message: `Void payment of ${formatMoney(payment.amount, 'rental')} for ${payment.tenant_name}?`,
+    confirmLabel: 'Void',
+    variant: 'danger',
+  })
+  if (!ok) return
 
   try {
     await voidPayment(payment.id)
-    await load()
+    toast.success('Payment voided.')
+    await reload()
   } catch (e) {
-    window.alert(e.response?.data?.message || 'Could not void payment.')
+    toast.error(e.response?.data?.message || 'Could not void payment.')
   }
 }
 
@@ -447,5 +498,12 @@ watch(
 onMounted(async () => {
   await loadBuildings()
   await load()
+  const query = router.currentRoute.value.query
+  if (query.action === 'new' && query.tenant_id) {
+    openCreate({
+      tenant_id: query.tenant_id,
+      rental_building_id: query.building_id,
+    })
+  }
 })
 </script>

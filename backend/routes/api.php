@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\Sales\SaleUnitController;
 use App\Http\Controllers\Api\V1\Rental\ChargeBatchController;
 use App\Http\Controllers\Api\V1\Rental\BuildingUtilityController;
 use App\Http\Controllers\Api\V1\Rental\BulkMeterReadingController;
+use App\Http\Controllers\Api\V1\Rental\MeterReadingContextController;
 use App\Http\Controllers\Api\V1\Rental\EmployeeController;
 use App\Http\Controllers\Api\V1\Rental\PayrollEntryController;
 use App\Http\Controllers\Api\V1\Rental\RentChargeController;
@@ -72,6 +73,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('bulk-meter-readings', [BulkMeterReadingController::class, 'index']);
         Route::post('bulk-meter-readings', [BulkMeterReadingController::class, 'store']);
+        Route::get('meter-readings/context', [MeterReadingContextController::class, 'show']);
 
         Route::get('electricity-bills', [TenantElectricityBillController::class, 'index']);
         Route::post('electricity-bills', [TenantElectricityBillController::class, 'store']);

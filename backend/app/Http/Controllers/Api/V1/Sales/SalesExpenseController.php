@@ -7,6 +7,7 @@ use App\Http\Requests\Sales\StoreSalesExpenseRequest;
 use App\Http\Requests\Sales\UpdateSalesExpenseRequest;
 use App\Http\Resources\SalesExpenseResource;
 use App\Models\SalesExpense;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,13 +18,17 @@ class SalesExpenseController extends Controller
     {
         $this->authorize('viewAny', SalesExpense::class);
 
-        $expenses = SalesExpense::query()
+        $query = SalesExpense::query()
             ->with('building')
             ->when($request->integer('building_id'), fn ($q, $id) => $q->where('sale_building_id', $id))
             ->when($request->input('from'), fn ($q, $from) => $q->whereDate('expense_date', '>=', $from))
-            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('expense_date', '<=', $to))
+            ->when($request->input('to'), fn ($q, $to) => $q->whereDate('expense_date', '<=', $to));
+
+        ListQuery::applySearch($query, $request, ['name', 'description']);
+
+        $expenses = $query
             ->orderByDesc('expense_date')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         return SalesExpenseResource::collection($expenses);
     }

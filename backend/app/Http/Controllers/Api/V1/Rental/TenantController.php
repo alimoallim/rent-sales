@@ -16,6 +16,7 @@ use App\Services\Rental\TenantBalanceBreakdownService;
 use App\Services\Rental\TenantBalanceCalculator;
 use App\Services\Rental\TenantMeterReadingReminderService;
 use App\Services\Rental\TenantService;
+use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -35,12 +36,25 @@ class TenantController extends Controller
 
         $status = $request->string('status', TenantStatus::Active->value)->toString();
 
-        $tenants = Tenant::query()
+        $query = Tenant::query()
             ->with(['building', 'unit'])
             ->when($request->integer('building_id'), fn ($query, $buildingId) => $query->where('rental_building_id', $buildingId))
-            ->where('status', $status)
+            ->where('status', $status);
+
+        ListQuery::applySearch($query, $request, ['name', 'phone', 'email', 'passport_or_id'], [
+            'building' => 'name',
+            'unit' => 'house_number',
+        ]);
+
+        if ($status === TenantStatus::Active->value && $request->boolean('with_balance')) {
+            $this->restrictToTenantsWithBalance($query);
+        }
+
+        $summary = $this->tenantIndexSummary($query, $status);
+
+        $tenants = $query
             ->orderBy('name')
-            ->paginate(50);
+            ->paginate(ListQuery::perPage($request, 50));
 
         if ($status === TenantStatus::Active->value) {
             $tenants->getCollection()->transform(function (Tenant $tenant): Tenant {
@@ -50,7 +64,62 @@ class TenantController extends Controller
             });
         }
 
-        return TenantResource::collection($tenants);
+        return TenantResource::collection($tenants)->additional([
+            'summary' => $summary,
+        ]);
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Tenant>  $query
+     * @return array<string, int|string>
+     */
+    private function tenantIndexSummary($query, string $status): array
+    {
+        $total = (clone $query)->count();
+
+        if ($status !== TenantStatus::Active->value) {
+            return ['total' => $total];
+        }
+
+        $withBalance = 0;
+        $totalOutstanding = '0.00';
+        $metered = (clone $query)
+            ->where(function ($builder): void {
+                $builder->where('requires_water_metering', true)
+                    ->orWhere('requires_electricity_metering', true);
+            })
+            ->count();
+
+        (clone $query)->orderBy('name')->each(function (Tenant $tenant) use (&$withBalance, &$totalOutstanding): void {
+            $balance = $this->balanceCalculator->calculate($tenant);
+
+            if (bccomp($balance, '0', 2) > 0) {
+                $withBalance++;
+                $totalOutstanding = bcadd($totalOutstanding, $balance, 2);
+            }
+        });
+
+        return [
+            'total' => $total,
+            'with_balance' => $withBalance,
+            'total_outstanding' => $totalOutstanding,
+            'metered' => $metered,
+        ];
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Builder<Tenant>  $query
+     */
+    private function restrictToTenantsWithBalance($query): void
+    {
+        $owingIds = (clone $query)
+            ->orderBy('name')
+            ->get()
+            ->filter(fn (Tenant $tenant): bool => bccomp($this->balanceCalculator->calculate($tenant), '0', 2) > 0)
+            ->pluck('id')
+            ->all();
+
+        $query->whereIn('id', $owingIds !== [] ? $owingIds : [0]);
     }
 
     public function store(StoreTenantRequest $request): TenantResource
