@@ -20,8 +20,8 @@ class StoreClientRequest extends FormRequest
     public function rules(): array
     {
         return array_merge($this->prohibitSalesCurrencyOverride(), [
-            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id'],
-            'sale_unit_id' => ['required', 'integer', 'exists:sale_units,id'],
+            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id,deleted_at,NULL'],
+            'sale_unit_id' => ['required', 'integer', 'exists:sale_units,id,deleted_at,NULL'],
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'max:30'],
             'gender' => ['nullable', 'string', 'max:20'],

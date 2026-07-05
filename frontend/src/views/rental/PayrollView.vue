@@ -59,7 +59,7 @@
         <MoneyCell :amount="item.salary_amount" module="rental" />
       </template>
       <template #actions="{ item }">
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="removePayroll(item)">Delete</button>
+        <RowActionButton icon="delete" label="Delete" variant="danger" @click="removePayroll(item)" />
       </template>
     </DataTable>
 
@@ -87,8 +87,8 @@
         <StatusBadge :variant="item.status === 'current' ? 'success' : 'neutral'" :label="item.status" />
       </template>
       <template #actions="{ item }">
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEditEmployee(item)">Edit</button>
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="removeEmployee(item)">Delete</button>
+        <RowActionButton icon="edit" label="Edit" @click="openEditEmployee(item)" />
+        <RowActionButton icon="delete" label="Delete" variant="danger" @click="removeEmployee(item)" />
       </template>
     </DataTable>
 
@@ -171,6 +171,7 @@ import FilterBar from '../../components/ui/FilterBar.vue'
 import FormField from '../../components/ui/FormField.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import { useConfirm } from '../../composables/useConfirm'
 import { usePaginatedList } from '../../composables/usePaginatedList'

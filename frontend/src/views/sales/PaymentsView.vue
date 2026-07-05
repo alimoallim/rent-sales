@@ -62,22 +62,19 @@
         <StatusBadge :variant="item.status === 'active' ? 'success' : 'neutral'" :label="item.status" />
       </template>
       <template #actions="{ item }">
-        <button
+        <RowActionButton
           v-if="item.status === 'active'"
-          type="button"
-          class="btn-secondary w-full sm:w-auto"
+          icon="edit"
+          label="Edit"
           @click="openEdit(item)"
-        >
-          Edit
-        </button>
-        <button
+        />
+        <RowActionButton
           v-if="item.status === 'active'"
-          type="button"
-          class="btn-destructive w-full sm:w-auto"
+          icon="cancel"
+          label="Cancel payment"
+          variant="danger"
           @click="cancelOne(item)"
-        >
-          Cancel
-        </button>
+        />
       </template>
     </DataTable>
 
@@ -165,6 +162,7 @@ import ClientSearchSelect from '../../components/ui/ClientSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import FormField from '../../components/ui/FormField.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'

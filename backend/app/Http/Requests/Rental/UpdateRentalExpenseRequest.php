@@ -17,7 +17,7 @@ class UpdateRentalExpenseRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'rental_building_id' => ['sometimes', 'integer', 'exists:rental_buildings,id'],
+            'rental_building_id' => ['sometimes', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'name' => ['sometimes', 'string', 'max:200'],
             'amount' => ['sometimes', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'description' => ['nullable', 'string', 'max:500'],

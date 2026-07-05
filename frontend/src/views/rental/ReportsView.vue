@@ -42,7 +42,7 @@
         <input v-model="filters.to" type="date" class="input-field" @change="load" />
         <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <input v-model="filters.include_voided" type="checkbox" class="h-4 w-4 rounded border-zinc-300" @change="load" />
-          Include voided
+          Include deleted payments
         </label>
       </template>
 
@@ -206,7 +206,12 @@ const columnSets = {
     { key: 'building_name', label: 'Building', tabletCard: true },
     { key: 'invoice_reference', label: 'Invoice', tabletCard: true },
     { key: 'discount', label: 'Discount', align: 'right', money: true, tabletCard: true },
-    { key: 'status', label: 'Status', mobileCard: true },
+    {
+      key: 'status',
+      label: 'Status',
+      mobileCard: true,
+      format: (item) => (item.status === 'voided' ? 'deleted' : item.status),
+    },
   ],
   'charge-summary': [
     { key: 'tenant_name', label: 'Tenant', cardTitle: true },

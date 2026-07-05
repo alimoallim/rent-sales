@@ -3,10 +3,15 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\LogsActivity;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PayrollEntry extends Model
 {
+    use LogsActivity;
+    use SoftDeletes;
+
     /**
      * @var list<string>
      */
@@ -45,5 +50,16 @@ class PayrollEntry extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function activityLabel(): ?string
+    {
+        $employee = $this->relationLoaded('employee') ? $this->employee : $this->employee()->first();
+
+        if ($employee?->name) {
+            return "{$employee->name} — {$this->billing_month}/{$this->billing_year}";
+        }
+
+        return "Payroll {$this->billing_month}/{$this->billing_year}";
     }
 }

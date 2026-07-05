@@ -50,7 +50,7 @@ class RentalOperationsTest extends TestCase
         $this->actingAs($user)->deleteJson("/api/v1/rental/expenses/{$expense->id}")
             ->assertOk();
 
-        $this->assertDatabaseMissing('rental_expenses', ['id' => $expense->id]);
+        $this->assertSoftDeleted('rental_expenses', ['id' => $expense->id]);
     }
 
     public function test_employee_and_payroll_flow(): void

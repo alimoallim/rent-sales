@@ -25,6 +25,11 @@ import SalesPayments from '../views/sales/PaymentsView.vue'
 import SalesExpenses from '../views/sales/ExpensesView.vue'
 import SalesReports from '../views/sales/ReportsView.vue'
 import AdminUsers from '../views/admin/UsersView.vue'
+import AdminActivityLog from '../views/admin/ActivityLogView.vue'
+import AdminRecycleBin from '../views/admin/RecycleBinView.vue'
+import SettingsView from '../views/SettingsView.vue'
+import ForgotPasswordView from '../views/ForgotPasswordView.vue'
+import ResetPasswordView from '../views/ResetPasswordView.vue'
 
 function canAccessModule(auth, module) {
   if (module === 'rental') return auth.canAccessRental
@@ -44,6 +49,18 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: LoginView,
+      meta: { guest: true },
+    },
+    {
+      path: '/forgot-password',
+      name: 'forgot-password',
+      component: ForgotPasswordView,
+      meta: { guest: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: ResetPasswordView,
       meta: { guest: true },
     },
     {
@@ -189,6 +206,24 @@ const router = createRouter({
           name: 'admin.users',
           component: AdminUsers,
           meta: { module: 'admin', title: 'Users' },
+        },
+        {
+          path: 'admin/activity-log',
+          name: 'admin.activity-log',
+          component: AdminActivityLog,
+          meta: { module: 'admin', title: 'Activity log' },
+        },
+        {
+          path: 'admin/recycle-bin',
+          name: 'admin.recycle-bin',
+          component: AdminRecycleBin,
+          meta: { module: 'admin', title: 'Recycle bin' },
+        },
+        {
+          path: 'settings',
+          name: 'settings',
+          component: SettingsView,
+          meta: { title: 'Settings' },
         },
       ],
     },

@@ -23,8 +23,8 @@
       @per-page-change="setPerPage"
     >
       <template #actions="{ item }">
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="remove(item)">Delete</button>
+        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+        <RowActionButton icon="delete" label="Delete" variant="danger" @click="remove(item)" />
       </template>
     </DataTable>
 
@@ -48,6 +48,7 @@ import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import FormField from '../../components/ui/FormField.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import { useConfirm } from '../../composables/useConfirm'
 import { usePaginatedList } from '../../composables/usePaginatedList'
 import { useToast } from '../../composables/useToast'

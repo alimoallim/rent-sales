@@ -17,8 +17,8 @@ class UpdateTenantRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id'],
-            'rental_unit_id' => ['required', 'integer', 'exists:rental_units,id'],
+            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
+            'rental_unit_id' => ['required', 'integer', 'exists:rental_units,id,deleted_at,NULL'],
             'name' => ['required', 'string', 'max:100'],
             'phone' => ['required', 'string', 'max:30'],
             'gender' => ['nullable', 'string', 'max:20'],

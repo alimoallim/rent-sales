@@ -2,16 +2,18 @@
 
 namespace App\Console\Commands;
 
+use App\Mail\PendingChargeBatchesMail;
 use App\Models\RentalBuilding;
 use App\Models\User;
 use App\Services\Rental\ChargeBatchService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class GenerateDraftChargeBatches extends Command
 {
-    protected $signature = 'rental:generate-charge-batches {--month=} {--year=}';
+    protected $signature = 'rental:generate-charge-batches {--month=} {--year=} {--notify}';
 
     protected $description = 'Generate draft monthly charge batches for all buildings when none exist for the period';
 
@@ -43,8 +45,23 @@ class GenerateDraftChargeBatches extends Command
             }
         });
 
-        $this->info("Done. Created {$created}, skipped {$skipped} existing batch(es).");
+        $pendingCount = $chargeBatchService->pendingBatchCount();
+
+        $this->info("Done. Created {$created}, skipped {$skipped} existing batch(es). Pending total: {$pendingCount}.");
+
+        $shouldNotify = $this->option('notify') || $this->shouldNotifyByDefault();
+        $recipients = config('notifications.admin_emails', []);
+
+        if ($shouldNotify && $recipients !== [] && ($created > 0 || $pendingCount > 0)) {
+            Mail::to($recipients)->send(new PendingChargeBatchesMail($created, $pendingCount, $month, $year));
+            $this->info('Notification email sent to: '.implode(', ', $recipients));
+        }
 
         return self::SUCCESS;
+    }
+
+    private function shouldNotifyByDefault(): bool
+    {
+        return config('notifications.admin_emails') !== [];
     }
 }

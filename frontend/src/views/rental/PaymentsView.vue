@@ -21,7 +21,7 @@
       <select v-model="filters.status" class="input-field" @change="loadTable">
         <option value="">All statuses</option>
         <option value="active">Active</option>
-        <option value="voided">Voided</option>
+        <option value="voided">Deleted</option>
       </select>
     </FilterBar>
 
@@ -62,25 +62,25 @@
         <MoneyCell :amount="item.discount" module="rental" />
       </template>
       <template #cell-status="{ item }">
-        <StatusBadge :variant="item.status === 'active' ? 'success' : 'neutral'" :label="item.status" />
+        <StatusBadge
+          :variant="item.status === 'active' ? 'success' : 'neutral'"
+          :label="item.status === 'voided' ? 'deleted' : item.status"
+        />
       </template>
       <template #actions="{ item }">
-        <button
+        <RowActionButton
           v-if="item.status === 'active'"
-          type="button"
-          class="btn-secondary w-full sm:w-auto"
+          icon="edit"
+          label="Edit"
           @click="openEdit(item)"
-        >
-          Edit
-        </button>
-        <button
+        />
+        <RowActionButton
           v-if="item.status === 'active'"
-          type="button"
-          class="btn-destructive w-full sm:w-auto"
+          icon="delete"
+          label="Delete"
+          variant="danger"
           @click="voidOne(item)"
-        >
-          Void
-        </button>
+        />
       </template>
     </DataTable>
 
@@ -211,6 +211,7 @@ import TenantSearchSelect from '../../components/ui/TenantSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import BalanceBreakdown from '../../components/rental/BalanceBreakdown.vue'
@@ -463,19 +464,19 @@ async function save() {
 
 async function voidOne(payment) {
   const ok = await confirm({
-    title: 'Void payment',
-    message: `Void payment of ${formatMoney(payment.amount, 'rental')} for ${payment.tenant_name}?`,
-    confirmLabel: 'Void',
+    title: 'Delete payment',
+    message: `Delete payment of ${formatMoney(payment.amount, 'rental')} for ${payment.tenant_name}? The payment will be removed from balances but kept in records as deleted.`,
+    confirmLabel: 'Delete',
     variant: 'danger',
   })
   if (!ok) return
 
   try {
     await voidPayment(payment.id)
-    toast.success('Payment voided.')
+    toast.success('Payment deleted.')
     await reload()
   } catch (e) {
-    toast.error(e.response?.data?.message || 'Could not void payment.')
+    toast.error(e.response?.data?.message || 'Could not delete payment.')
   }
 }
 

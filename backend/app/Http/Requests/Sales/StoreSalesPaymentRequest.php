@@ -21,7 +21,7 @@ class StoreSalesPaymentRequest extends FormRequest
     {
         return array_merge($this->prohibitSalesCurrencyOverride(), [
             'client_id' => ['required', 'integer', 'exists:clients,id'],
-            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id'],
+            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id,deleted_at,NULL'],
             'amount' => ['required', 'numeric', 'min:0.01', 'regex:/^\d+(\.\d{1,2})?$/'],
             'discount' => ['nullable', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'invoice_reference' => ['nullable', 'string', 'max:50'],

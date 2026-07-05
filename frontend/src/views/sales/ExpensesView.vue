@@ -42,8 +42,8 @@
         <MoneyCell :amount="item.amount" module="sales" />
       </template>
       <template #actions="{ item }">
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="remove(item)">Delete</button>
+        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+        <RowActionButton icon="delete" label="Delete" variant="danger" @click="remove(item)" />
       </template>
     </DataTable>
 
@@ -88,6 +88,7 @@ import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import FormField from '../../components/ui/FormField.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import { useConfirm } from '../../composables/useConfirm'

@@ -19,7 +19,7 @@ class StoreBulkMeterReadingsRequest extends FormRequest
     {
         return [
             'utility' => ['required', 'string', Rule::in(['water', 'electricity'])],
-            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id'],
+            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'billing_month' => ['required', 'integer', 'min:1', 'max:12'],
             'billing_year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'readings' => ['required', 'array', 'min:1'],

@@ -17,8 +17,8 @@ class UpdateShareholderBillRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'shareholder_id' => ['sometimes', 'integer', 'exists:shareholders,id'],
-            'rental_building_id' => ['sometimes', 'integer', 'exists:rental_buildings,id'],
+            'shareholder_id' => ['sometimes', 'integer', 'exists:shareholders,id,deleted_at,NULL'],
+            'rental_building_id' => ['sometimes', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'amount' => ['sometimes', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'remark' => ['nullable', 'string', 'max:500'],
             'bill_date' => ['sometimes', 'date'],

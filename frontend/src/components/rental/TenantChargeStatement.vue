@@ -55,15 +55,13 @@
               <td class="px-4 py-2.5 text-right font-medium tabular-nums text-zinc-900 dark:text-zinc-100 sm:px-5">
                 {{ formatMoney(line.amount, 'rental') }}
               </td>
-              <td class="print-hidden px-4 py-2.5 text-right sm:px-5">
-                <button
+              <td class="print-hidden px-4 py-1.5 text-right sm:px-5">
+                <RowActionButton
                   v-if="line.editable"
-                  type="button"
-                  class="btn-ghost !min-h-8 !py-1 text-xs"
+                  icon="edit"
+                  label="Edit"
                   @click="$emit('edit', line.charge)"
-                >
-                  Edit
-                </button>
+                />
               </td>
             </tr>
           </tbody>
@@ -103,6 +101,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import RowActionButton from '../ui/RowActionButton.vue'
 import { formatMoney, amountLabel, moneyLabel, currencyCode } from '../../utils/money'
 
 const props = defineProps({

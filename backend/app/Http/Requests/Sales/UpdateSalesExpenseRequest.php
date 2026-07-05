@@ -20,7 +20,7 @@ class UpdateSalesExpenseRequest extends FormRequest
     public function rules(): array
     {
         return array_merge($this->prohibitSalesCurrencyOverride(), [
-            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id'],
+            'sale_building_id' => ['required', 'integer', 'exists:sale_buildings,id,deleted_at,NULL'],
             'name' => ['required', 'string', 'max:200'],
             'amount' => ['required', 'numeric', 'min:0.01', 'regex:/^\d+(\.\d{1,2})?$/'],
             'description' => ['nullable', 'string', 'max:500'],

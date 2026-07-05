@@ -52,7 +52,7 @@
 
         <div
           v-if="$slots.actions"
-          class="mt-2 flex flex-col gap-1.5 border-t border-zinc-200 dark:border-zinc-700 pt-2 sm:flex-row sm:flex-wrap"
+          class="mt-2 flex flex-wrap items-center justify-end gap-1.5 border-t border-zinc-200 dark:border-zinc-700 pt-2"
         >
           <slot name="actions" :item="item" />
         </div>
@@ -110,8 +110,8 @@
                   {{ formatValue(item, col) }}
                 </slot>
               </td>
-              <td v-if="$slots.actions" class="data-grid-td text-right">
-                <div class="flex flex-wrap justify-end gap-1.5">
+              <td v-if="$slots.actions" class="data-grid-td w-px whitespace-nowrap text-right">
+                <div class="flex items-center justify-end gap-1">
                   <slot name="actions" :item="item" />
                 </div>
               </td>

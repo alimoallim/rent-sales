@@ -114,4 +114,6 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'password_reset_code_ttl' => env('PASSWORD_RESET_CODE_TTL', 15),
+
 ];

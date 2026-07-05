@@ -3,11 +3,19 @@
 namespace App\Models;
 
 use App\Enums\RentPaymentStatus;
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class RentPayment extends Model
 {
+    use LogsActivity;
+
+    public function activityLabel(): ?string
+    {
+        return 'Payment of '.$this->amount;
+    }
+
     /**
      * @var list<string>
      */

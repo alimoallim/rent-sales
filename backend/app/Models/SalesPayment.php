@@ -4,12 +4,19 @@ namespace App\Models;
 
 use App\Enums\SalesPaymentStatus;
 use App\Models\Concerns\HasSalesCurrency;
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesPayment extends Model
 {
     use HasSalesCurrency;
+    use LogsActivity;
+
+    public function activityLabel(): ?string
+    {
+        return 'Payment of '.$this->amount;
+    }
 
     /**
      * @var list<string>

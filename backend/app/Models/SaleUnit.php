@@ -6,6 +6,8 @@ use App\Enums\ClientStatus;
 use App\Enums\SaleUnitStatus;
 use App\Models\Concerns\HasSalesCurrency;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\LogsActivity;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -13,6 +15,8 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class SaleUnit extends Model
 {
     use HasSalesCurrency;
+    use LogsActivity;
+    use SoftDeletes;
 
     /**
      * @var list<string>

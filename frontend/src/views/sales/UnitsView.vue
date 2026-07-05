@@ -178,22 +178,19 @@
       </template>
 
       <template #actions="{ item }">
-        <button
+        <RowActionButton
           v-if="item.status === 'available'"
-          type="button"
-          class="btn-secondary w-full sm:w-auto"
+          icon="edit"
+          label="Edit"
           @click="openEdit(item)"
-        >
-          Edit
-        </button>
-        <button
+        />
+        <RowActionButton
           v-if="item.status === 'available'"
-          type="button"
-          class="btn-destructive w-full sm:w-auto"
+          icon="delete"
+          label="Delete"
+          variant="danger"
           @click="remove(item)"
-        >
-          Delete
-        </button>
+        />
       </template>
     </DataTable>
 
@@ -244,6 +241,7 @@ import FormField from '../../components/ui/FormField.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import ClientNameLink from '../../components/sales/ClientNameLink.vue'
 import { useConfirm } from '../../composables/useConfirm'

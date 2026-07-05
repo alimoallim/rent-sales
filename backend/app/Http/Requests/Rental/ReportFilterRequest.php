@@ -17,7 +17,7 @@ class ReportFilterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'building_id' => ['nullable', 'integer', 'exists:rental_buildings,id'],
+            'building_id' => ['nullable', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'tenant_id' => ['nullable', 'integer', 'exists:tenants,id'],
             'billing_month' => ['nullable', 'integer', 'min:1', 'max:12'],
             'billing_year' => ['nullable', 'integer', 'min:2000', 'max:2100'],

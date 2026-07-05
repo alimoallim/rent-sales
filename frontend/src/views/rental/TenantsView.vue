@@ -148,14 +148,13 @@
         <MoneyCell :amount="item.deposit" module="rental" />
       </template>
       <template v-if="status === 'active'" #actions="{ item }">
-        <RouterLink
+        <RowActionButton
+          icon="pay"
+          label="Pay"
           :to="{ path: '/rental/payments', query: { tenant_id: item.id, building_id: item.rental_building_id, action: 'new' } }"
-          class="btn-secondary w-full sm:w-auto"
-        >
-          Pay
-        </RouterLink>
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="openMoveOut(item)">Move out</button>
+        />
+        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+        <RowActionButton icon="move-out" label="Move out" variant="danger" @click="openMoveOut(item)" />
       </template>
     </DataTable>
 
@@ -332,7 +331,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { RouterLink } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
@@ -342,6 +340,7 @@ import FormField from '../../components/ui/FormField.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'

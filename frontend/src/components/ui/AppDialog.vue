@@ -3,17 +3,18 @@
     <div
       v-if="open"
       class="dialog-overlay"
+      :class="{ 'dialog-overlay-fit': fit }"
       role="presentation"
       @click.self="onBackdrop"
     >
       <div
         class="dialog-panel flex flex-col"
-        :class="maxWidthClass"
+        :class="[maxWidthClass, { 'dialog-panel-fit': fit }]"
         role="dialog"
         aria-modal="true"
         :aria-labelledby="titleId"
       >
-        <div v-if="$slots.header || title" class="mb-4 flex shrink-0 items-start justify-between gap-4">
+        <div v-if="$slots.header || title" class="mb-3 flex shrink-0 items-start justify-between gap-4">
           <div>
             <h3 :id="titleId" class="text-sm font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
               <slot name="header">{{ title }}</slot>
@@ -32,13 +33,13 @@
           </button>
         </div>
 
-        <div class="min-h-0 flex-1 overflow-y-auto">
+        <div class="dialog-body" :class="{ 'dialog-body-fit': fit }">
           <slot />
         </div>
 
         <div
           v-if="$slots.footer"
-          class="mt-4 flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-200 dark:border-zinc-700 pt-3 sm:flex-row sm:justify-end"
+          class="mt-3 flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-200 dark:border-zinc-700 pt-3 sm:flex-row sm:justify-end"
         >
           <slot name="footer" />
         </div>
@@ -57,9 +58,10 @@ const props = defineProps({
   size: {
     type: String,
     default: 'md',
-    validator: (v) => ['sm', 'md', 'lg', 'xl', '2xl'].includes(v),
+    validator: (v) => ['sm', 'md', 'lg', 'xl', '2xl', '3xl'].includes(v),
   },
   closeOnBackdrop: { type: Boolean, default: true },
+  fit: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:open', 'close'])
@@ -73,6 +75,7 @@ const maxWidthClass = computed(() => {
     lg: 'lg:max-w-2xl',
     xl: 'lg:max-w-3xl',
     '2xl': 'lg:max-w-5xl',
+    '3xl': 'lg:max-w-6xl',
   }
   return sizes[props.size]
 })

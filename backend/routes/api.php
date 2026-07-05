@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\ActivityLogController;
+use App\Http\Controllers\Api\V1\Admin\RecycleBinController;
+use App\Http\Controllers\Api\V1\Admin\SystemSettingsController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\Sales\ClientController;
@@ -33,10 +36,17 @@ Route::prefix('v1')->group(function (): void {
     Route::prefix('auth')->group(function (): void {
         Route::post('login', [AuthController::class, 'login'])
             ->middleware('throttle:6,1');
+        Route::post('forgot-password', [AuthController::class, 'forgotPassword'])
+            ->middleware('throttle:3,1');
+        Route::post('verify-reset-code', [AuthController::class, 'verifyResetCode'])
+            ->middleware('throttle:10,1');
+        Route::post('reset-password', [AuthController::class, 'resetPassword'])
+            ->middleware('throttle:6,1');
 
         Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('me', [AuthController::class, 'me']);
             Route::post('logout', [AuthController::class, 'logout']);
+            Route::patch('profile', [AuthController::class, 'updateProfile']);
             Route::put('password', [AuthController::class, 'updatePassword']);
         });
     });
@@ -119,6 +129,12 @@ Route::prefix('v1')->group(function (): void {
     });
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
+        Route::get('settings', [SystemSettingsController::class, 'show']);
+        Route::post('settings/test-email', [SystemSettingsController::class, 'sendTestMail']);
+        Route::get('activity-log', [ActivityLogController::class, 'index']);
+        Route::get('recycle-bin/types', [RecycleBinController::class, 'types']);
+        Route::get('recycle-bin', [RecycleBinController::class, 'index']);
+        Route::post('recycle-bin/{type}/{id}/restore', [RecycleBinController::class, 'restore']);
         Route::apiResource('users', UserController::class);
     });
 });

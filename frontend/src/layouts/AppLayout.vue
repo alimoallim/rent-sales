@@ -4,6 +4,7 @@
       :sections="navSections"
       :badges="navBadges"
       :mobile-open="sidebarOpen"
+      :collapsed="sidebarCollapsed"
       :home-path="homePath"
       :module-label="sidebarModuleLabel"
       :user-name="auth.user?.name ?? ''"
@@ -12,10 +13,12 @@
       :current-module="navModule"
       @navigate="sidebarOpen = false"
       @close="sidebarOpen = false"
+      @toggle-collapse="toggleSidebarCollapsed"
+      @expand="setSidebarCollapsed(false)"
       @switch-module="onSwitchModule"
     />
 
-    <div class="app-shell-main">
+    <div class="app-shell-main" :class="{ 'app-shell-main-rail': sidebarCollapsed }">
       <AppTopbar
         :page-title="pageTitle"
         :module-label="topbarModuleLabel"
@@ -43,14 +46,26 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import AppSidebar from '../components/layout/AppSidebar.vue'
 import AppTopbar from '../components/layout/AppTopbar.vue'
-import { adminNavSections, moduleLabels, rentalNavSections, salesNavSections } from '../config/rentalNav'
+import { adminNavSections, accountNavSection, moduleLabels, rentalNavSections, salesNavSections } from '../config/rentalNav'
 import { fetchChargeBatchPendingCount } from '../api/rental'
+
+const SIDEBAR_COLLAPSED_KEY = 'ui.sidebar-collapsed'
 
 const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const sidebarOpen = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1')
 const navBadges = ref({ chargeBatches: 0 })
+
+function setSidebarCollapsed(value) {
+  sidebarCollapsed.value = value
+  localStorage.setItem(SIDEBAR_COLLAPSED_KEY, value ? '1' : '0')
+}
+
+function toggleSidebarCollapsed() {
+  setSidebarCollapsed(!sidebarCollapsed.value)
+}
 
 const navModule = computed(() => {
   if (route.path.startsWith('/sales')) return 'sales'
@@ -59,10 +74,12 @@ const navModule = computed(() => {
 })
 
 const isAdminRoute = computed(() => route.path.startsWith('/admin'))
+const isSettingsRoute = computed(() => route.path.startsWith('/settings'))
 
 const sidebarModuleLabel = computed(() => `${moduleLabels[navModule.value]} module`)
 
 const topbarModuleLabel = computed(() => {
+  if (isSettingsRoute.value) return 'Account'
   if (isAdminRoute.value) return 'Administration'
   return moduleLabels[navModule.value]
 })
@@ -74,6 +91,8 @@ const navSections = computed(() => {
 
   if (auth.isAdmin) {
     sections.push(...adminNavSections)
+  } else {
+    sections.push(accountNavSection)
   }
 
   return sections

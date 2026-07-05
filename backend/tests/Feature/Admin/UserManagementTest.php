@@ -41,8 +41,8 @@ class UserManagementTest extends TestCase
             ->postJson('/api/v1/admin/users', [
                 'name' => 'New Rental User',
                 'username' => 'newrental',
-                'password' => 'password',
-                'password_confirmation' => 'password',
+                'password' => 'Str0ng!Pass',
+                'password_confirmation' => 'Str0ng!Pass',
                 'role' => UserRole::Rental->value,
                 'status' => UserStatus::Active->value,
             ])
@@ -101,11 +101,11 @@ class UserManagementTest extends TestCase
 
         $this->actingAs($admin)
             ->putJson("/api/v1/admin/users/{$user->id}", [
-                'password' => 'new-password',
-                'password_confirmation' => 'new-password',
+                'password' => 'N3w!Passw0rd',
+                'password_confirmation' => 'N3w!Passw0rd',
             ])
             ->assertOk();
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('N3w!Passw0rd', $user->fresh()->password));
     }
 }

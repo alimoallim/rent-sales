@@ -19,7 +19,7 @@ class StoreEmployeeRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'rental_building_id' => ['nullable', 'integer', 'exists:rental_buildings,id'],
+            'rental_building_id' => ['nullable', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'name' => ['required', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:200'],
             'salary' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],

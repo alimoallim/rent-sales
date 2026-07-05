@@ -149,14 +149,13 @@
         <span v-else class="text-zinc-400">—</span>
       </template>
       <template v-if="status === 'active'" #actions="{ item }">
-        <RouterLink
+        <RowActionButton
+          icon="pay"
+          label="Pay"
           :to="{ path: '/sales/payments', query: { client_id: item.id, building_id: item.sale_building_id, action: 'new' } }"
-          class="btn-secondary w-full sm:w-auto"
-        >
-          Pay
-        </RouterLink>
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
-        <button type="button" class="btn-destructive w-full sm:w-auto" @click="disableOne(item)">Disable</button>
+        />
+        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+        <RowActionButton icon="disable" label="Disable" variant="danger" @click="disableOne(item)" />
       </template>
     </DataTable>
 
@@ -244,7 +243,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { RouterLink } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
@@ -254,6 +252,7 @@ import FormField from '../../components/ui/FormField.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import ClientNameLink from '../../components/sales/ClientNameLink.vue'

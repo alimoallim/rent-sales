@@ -5,12 +5,17 @@ namespace App\Models;
 use App\Enums\RentalUnitStatus;
 use App\Enums\TenantStatus;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\LogsActivity;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class RentalUnit extends Model
 {
+    use LogsActivity;
+    use SoftDeletes;
+
     /**
      * @var list<string>
      */

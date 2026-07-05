@@ -24,5 +24,5 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
-        $schedule->command('rental:generate-charge-batches')->monthlyOn(1, '00:05');
+        $schedule->command('rental:generate-charge-batches --notify')->monthlyOn(1, '00:05');
     })->create();

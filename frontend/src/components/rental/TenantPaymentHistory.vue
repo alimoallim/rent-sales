@@ -54,7 +54,7 @@
               <td class="px-3 py-2.5 text-right sm:px-4">
                 <StatusBadge
                   :variant="payment.status === 'active' ? 'success' : 'neutral'"
-                  :label="payment.status"
+                  :label="payment.status === 'voided' ? 'deleted' : payment.status"
                 />
               </td>
             </tr>

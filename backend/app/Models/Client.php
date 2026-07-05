@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\ClientStatus;
 use App\Models\Concerns\HasSalesCurrency;
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Client extends Model
 {
     use HasSalesCurrency;
+    use LogsActivity;
 
     /**
      * @var list<string>

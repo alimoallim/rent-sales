@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Rental;
 
+use App\Rules\UniqueBuildingName;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateRentalBuildingRequest extends FormRequest
@@ -17,7 +18,12 @@ class UpdateRentalBuildingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:200'],
+            'name' => [
+                'required',
+                'string',
+                'max:200',
+                new UniqueBuildingName(ignoreRentalBuildingId: $this->route('building')?->id),
+            ],
         ];
     }
 }

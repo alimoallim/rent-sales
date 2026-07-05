@@ -23,7 +23,7 @@ class StoreRentPaymentRequest extends FormRequest
     {
         return [
             'tenant_id' => ['required', 'integer', 'exists:tenants,id'],
-            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id'],
+            'rental_building_id' => ['required', 'integer', 'exists:rental_buildings,id,deleted_at,NULL'],
             'amount' => ['required', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'discount' => ['nullable', 'numeric', 'min:0', 'regex:/^\d+(\.\d{1,2})?$/'],
             'invoice_reference' => ['nullable', 'string', 'max:50'],

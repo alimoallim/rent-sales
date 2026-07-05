@@ -33,8 +33,10 @@ use App\Policies\SalesModulePolicy;
 use App\Policies\SaleUnitPolicy;
 use App\Policies\TenantPolicy;
 use App\Policies\UserPolicy;
+use App\Support\PasswordRules;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -51,6 +53,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Password::defaults(fn () => PasswordRules::defaults());
+
         Gate::policy(ChargeBatch::class, ChargeBatchPolicy::class);
         Gate::policy(RentalBuilding::class, RentalBuildingPolicy::class);
         Gate::policy(RentalUnit::class, RentalUnitPolicy::class);

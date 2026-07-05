@@ -126,15 +126,14 @@
       </template>
 
       <template #actions="{ item }">
-        <button type="button" class="btn-secondary w-full sm:w-auto" @click="openEdit(item)">Edit</button>
-        <button
+        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+        <RowActionButton
           v-if="item.status === 'vacant'"
-          type="button"
-          class="btn-destructive w-full sm:w-auto"
+          icon="delete"
+          label="Delete"
+          variant="danger"
           @click="remove(item)"
-        >
-          Delete
-        </button>
+        />
       </template>
     </DataTable>
 
@@ -181,6 +180,7 @@ import FormField from '../../components/ui/FormField.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
 import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
 import { useConfirm } from '../../composables/useConfirm'

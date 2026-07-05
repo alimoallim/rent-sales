@@ -97,11 +97,27 @@ class AuthenticationTest extends TestCase
         $this->actingAs($user)
             ->putJson('/api/v1/auth/password', [
                 'current_password' => 'old-secret',
-                'password' => 'new-secret',
-                'password_confirmation' => 'new-secret',
+                'password' => 'Str0ng!Pass',
+                'password_confirmation' => 'Str0ng!Pass',
             ])
             ->assertOk();
 
-        $this->assertTrue(Hash::check('new-secret', $user->fresh()->password));
+        $this->assertTrue(Hash::check('Str0ng!Pass', $user->fresh()->password));
+    }
+
+    public function test_authenticated_user_cannot_set_weak_password(): void
+    {
+        $user = User::factory()->rental()->create([
+            'password' => Hash::make('old-secret'),
+        ]);
+
+        $this->actingAs($user)
+            ->putJson('/api/v1/auth/password', [
+                'current_password' => 'old-secret',
+                'password' => 'weak',
+                'password_confirmation' => 'weak',
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['password']);
     }
 }

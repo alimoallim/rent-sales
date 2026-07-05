@@ -4,11 +4,15 @@ namespace App\Models;
 
 use App\Models\Concerns\HasSalesCurrency;
 use Illuminate\Database\Eloquent\Model;
+use App\Models\Concerns\LogsActivity;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesExpense extends Model
 {
     use HasSalesCurrency;
+    use LogsActivity;
+    use SoftDeletes;
 
     /**
      * @var list<string>

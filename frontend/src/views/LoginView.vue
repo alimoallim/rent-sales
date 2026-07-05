@@ -76,6 +76,19 @@
             />
           </FormField>
 
+          <div class="flex justify-end">
+            <RouterLink
+              class="text-sm font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+              :to="{ name: 'forgot-password' }"
+            >
+              Forgot password?
+            </RouterLink>
+          </div>
+
+          <p v-if="notice" class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-200">
+            {{ notice }}
+          </p>
+
           <p v-if="error" class="alert-error">{{ error }}</p>
 
           <button type="submit" class="btn-primary w-full" :disabled="loading">
@@ -88,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import FormField from '../components/ui/FormField.vue'
 import ThemeToggle from '../components/ui/ThemeToggle.vue'
@@ -101,8 +114,16 @@ const route = useRoute()
 const username = ref('')
 const password = ref('')
 const error = ref('')
+const notice = ref('')
 const loading = ref(false)
 const year = new Date().getFullYear()
+
+onMounted(() => {
+  const message = route.query.message
+  if (route.query.reset === '1' && typeof message === 'string' && message.length > 0) {
+    notice.value = message
+  }
+})
 
 async function submit() {
   error.value = ''

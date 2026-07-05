@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Sales;
 
+use App\Rules\UniqueBuildingName;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreSaleBuildingRequest extends FormRequest
@@ -17,7 +18,7 @@ class StoreSaleBuildingRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:200'],
+            'name' => ['required', 'string', 'max:200', new UniqueBuildingName],
         ];
     }
 }
