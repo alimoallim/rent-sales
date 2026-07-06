@@ -38,6 +38,7 @@ class TenantResource extends JsonResource
             'start_date' => $this->start_date?->toDateString(),
             'status' => $this->status->value,
             'balance' => $this->when(isset($this->balance), $this->balance),
+            'documents' => $this->whenLoaded('documents', fn () => DocumentResource::collection($this->documents)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

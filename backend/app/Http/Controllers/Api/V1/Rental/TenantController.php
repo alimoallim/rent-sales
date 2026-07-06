@@ -135,7 +135,7 @@ class TenantController extends Controller
     {
         $this->authorize('view', $tenant);
 
-        $tenant->load(['building', 'unit']);
+        $tenant->load(['building', 'unit', 'documents']);
 
         return new TenantResource($tenant);
     }

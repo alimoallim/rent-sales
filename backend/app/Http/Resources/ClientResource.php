@@ -37,6 +37,7 @@ class ClientResource extends JsonResource
             'status' => $this->status->value,
             'balance' => $this->when(isset($this->balance), $this->balance),
             'payments_count' => $this->whenCounted('payments'),
+            'documents' => $this->whenLoaded('documents', fn () => DocumentResource::collection($this->documents)),
             'created_at' => $this->created_at?->toISOString(),
             'updated_at' => $this->updated_at?->toISOString(),
         ];

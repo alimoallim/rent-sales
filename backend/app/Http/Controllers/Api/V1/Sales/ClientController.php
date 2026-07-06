@@ -131,7 +131,7 @@ class ClientController extends Controller
     {
         $this->authorize('view', $client);
 
-        $client->load(['building', 'unit']);
+        $client->load(['building', 'unit', 'documents']);
         $client->balance = $this->balanceCalculator->calculate($client);
 
         return new ClientResource($client);

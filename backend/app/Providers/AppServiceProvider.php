@@ -6,6 +6,7 @@ use App\Models\ChargeBatch;
 use App\Models\BuildingElectricityBill;
 use App\Models\BuildingWaterUtilityBill;
 use App\Models\Client;
+use App\Models\Document;
 use App\Models\Employee;
 use App\Models\PayrollEntry;
 use App\Models\RentalBuilding;
@@ -25,6 +26,7 @@ use App\Models\TenantWaterBill;
 use App\Models\User;
 use App\Policies\ChargeBatchPolicy;
 use App\Policies\ClientPolicy;
+use App\Policies\DocumentPolicy;
 use App\Policies\RentalBuildingPolicy;
 use App\Policies\RentalModulePolicy;
 use App\Policies\RentalUnitPolicy;
@@ -55,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Password::defaults(fn () => PasswordRules::defaults());
 
+        Gate::policy(Document::class, DocumentPolicy::class);
         Gate::policy(ChargeBatch::class, ChargeBatchPolicy::class);
         Gate::policy(RentalBuilding::class, RentalBuildingPolicy::class);
         Gate::policy(RentalUnit::class, RentalUnitPolicy::class);

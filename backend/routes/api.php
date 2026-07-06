@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\RecycleBinController;
 use App\Http\Controllers\Api\V1\Admin\SystemSettingsController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\Sales\ClientDocumentController;
 use App\Http\Controllers\Api\V1\Sales\ClientController;
 use App\Http\Controllers\Api\V1\Sales\SaleBuildingController;
 use App\Http\Controllers\Api\V1\Sales\SalesDashboardController;
@@ -27,7 +28,9 @@ use App\Http\Controllers\Api\V1\Rental\RentalReportController;
 use App\Http\Controllers\Api\V1\Rental\RentalUnitController;
 use App\Http\Controllers\Api\V1\Rental\ShareholderBillController;
 use App\Http\Controllers\Api\V1\Rental\ShareholderController;
+use App\Http\Controllers\Api\V1\DocumentController;
 use App\Http\Controllers\Api\V1\Rental\TenantController;
+use App\Http\Controllers\Api\V1\Rental\TenantDocumentController;
 use App\Http\Controllers\Api\V1\Rental\TenantElectricityBillController;
 use App\Http\Controllers\Api\V1\Rental\TenantWaterBillController;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +61,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('move-outs', [TenantController::class, 'moveOuts']);
         Route::post('tenants/{tenant}/move-out', [TenantController::class, 'moveOut']);
         Route::get('tenants/{tenant}/payment-summary', [TenantController::class, 'paymentSummary']);
+        Route::get('tenants/{tenant}/documents', [TenantDocumentController::class, 'index']);
+        Route::post('tenants/{tenant}/documents', [TenantDocumentController::class, 'store']);
         Route::apiResource('tenants', TenantController::class)->only(['index', 'store', 'show', 'update']);
 
         Route::get('charges', [RentChargeController::class, 'index']);
@@ -113,6 +118,8 @@ Route::prefix('v1')->group(function (): void {
         Route::apiResource('units', SaleUnitController::class);
         Route::get('clients/{client}/payment-summary', [ClientController::class, 'paymentSummary']);
         Route::post('clients/{client}/disable', [ClientController::class, 'disable']);
+        Route::get('clients/{client}/documents', [ClientDocumentController::class, 'index']);
+        Route::post('clients/{client}/documents', [ClientDocumentController::class, 'store']);
         Route::apiResource('clients', ClientController::class)->only(['index', 'store', 'show', 'update']);
 
         Route::get('payments', [SalesPaymentController::class, 'index']);
@@ -126,6 +133,11 @@ Route::prefix('v1')->group(function (): void {
             Route::get('balance', [SalesReportController::class, 'balance']);
             Route::get('income-statement', [SalesReportController::class, 'incomeStatement']);
         });
+    });
+
+    Route::middleware(['auth:sanctum'])->group(function (): void {
+        Route::get('documents/{document}', [DocumentController::class, 'show']);
+        Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
     });
 
     Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->name('admin.')->group(function (): void {
