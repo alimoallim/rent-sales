@@ -208,5 +208,6 @@ php artisan route:list --path=bulk-meter
 |-----|---------|
 | [DEPLOYMENT.md](./DEPLOYMENT.md) | General hosting reference |
 | [DEPLOYMENT-V2.md](./DEPLOYMENT-V2.md) | V2 live test guide |
+| [DEPLOYMENT-V4.md](./DEPLOYMENT-V4.md) | V4 — auth, admin, soft deletes, migrations |
 | [LEGACY_IMPORT.md](./LEGACY_IMPORT.md) | Legacy SQL import |
 | [deploy/rasulmart/SYMLINK-DEPLOY.md](./deploy/rasulmart/SYMLINK-DEPLOY.md) | Symlink layout |

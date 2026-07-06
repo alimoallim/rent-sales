@@ -121,3 +121,16 @@ export async function fetchIncomeStatement(params = {}) {
   const { data } = await api.get('/api/v1/sales/reports/income-statement', { params })
   return data
 }
+
+export async function downloadSalesReportCsv(path, params = {}, filename = 'report.csv') {
+  const response = await api.get(`/api/v1/sales/reports/${path}`, {
+    params: { ...params, format: 'csv' },
+    responseType: 'blob',
+  })
+  const blob = new Blob([response.data], { type: 'text/csv' })
+  const link = document.createElement('a')
+  link.href = URL.createObjectURL(blob)
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(link.href)
+}

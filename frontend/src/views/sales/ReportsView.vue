@@ -4,7 +4,18 @@
       title="Sales reports"
       subtitle="Balance outstanding and income vs expenses."
       :breadcrumbs="[{ label: 'Sales', to: '/sales' }, { label: 'Reports' }]"
-    />
+    >
+      <template #actions>
+        <button
+          type="button"
+          class="btn-secondary w-full sm:w-auto"
+          :disabled="loading || !hasReportData"
+          @click="exportCsv"
+        >
+          Export CSV
+        </button>
+      </template>
+    </PageHeader>
 
     <FilterBar>
       <div class="segmented-control">
@@ -175,7 +186,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import PageHeader from '../../components/PageHeader.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
@@ -189,7 +200,7 @@ import TableSkeleton from '../../components/data/TableSkeleton.vue'
 import ClientNameLink from '../../components/sales/ClientNameLink.vue'
 import { useToast } from '../../composables/useToast'
 import { formatMoney } from '../../utils/money'
-import { fetchBalanceReport, fetchBuildings, fetchIncomeStatement } from '../../api/sales'
+import { downloadSalesReportCsv, fetchBalanceReport, fetchBuildings, fetchIncomeStatement } from '../../api/sales'
 
 const toast = useToast()
 
@@ -225,6 +236,40 @@ const expenseColumns = [
   { key: 'expense_date', label: 'Date' },
 ]
 
+const hasReportData = computed(() => {
+  if (tab.value === 'balance') {
+    return Boolean(balanceReport.value?.rows?.length)
+  }
+
+  return Boolean(
+    incomeReport.value?.payments?.length || incomeReport.value?.expenses?.length,
+  )
+})
+
+function buildParams() {
+  const params = {}
+  if (filters.building_id) params.building_id = filters.building_id
+
+  if (tab.value === 'balance') {
+    if (filters.outstanding_only) params.outstanding_only = 1
+  } else {
+    if (filters.from) params.from = filters.from
+    if (filters.to) params.to = filters.to
+  }
+
+  return params
+}
+
+async function exportCsv() {
+  try {
+    const path = tab.value === 'balance' ? 'balance' : 'income-statement'
+    const filename = tab.value === 'balance' ? 'sales-balance.csv' : 'sales-income-statement.csv'
+    await downloadSalesReportCsv(path, buildParams(), filename)
+  } catch {
+    toast.error('Could not export report.')
+  }
+}
+
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
@@ -235,15 +280,11 @@ async function load() {
   balanceReport.value = null
   incomeReport.value = null
   try {
-    const params = {}
-    if (filters.building_id) params.building_id = filters.building_id
+    const params = buildParams()
 
     if (tab.value === 'balance') {
-      if (filters.outstanding_only) params.outstanding_only = 1
       balanceReport.value = await fetchBalanceReport(params)
     } else {
-      if (filters.from) params.from = filters.from
-      if (filters.to) params.to = filters.to
       incomeReport.value = await fetchIncomeStatement(params)
     }
   } catch {

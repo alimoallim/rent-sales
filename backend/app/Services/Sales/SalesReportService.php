@@ -84,6 +84,7 @@ class SalesReportService
      */
     public function incomeStatement(?int $buildingId = null, ?string $from = null, ?string $to = null): array
     {
+        $salesCurrency = MoneyConfig::salesCurrency();
         $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
         $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
 
@@ -137,8 +138,6 @@ class SalesReportService
                 'expense_date' => $expense->expense_date?->toISOString(),
             ];
         }
-
-        $salesCurrency = MoneyConfig::salesCurrency();
 
         return [
             'generated_at' => now()->toISOString(),
