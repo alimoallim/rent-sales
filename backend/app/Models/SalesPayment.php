@@ -62,4 +62,9 @@ class SalesPayment extends Model
     {
         return $this->belongsTo(SaleBuilding::class, 'sale_building_id');
     }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
 }

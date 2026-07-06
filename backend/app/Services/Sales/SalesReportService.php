@@ -154,4 +154,137 @@ class SalesReportService
             'expenses' => $expenseRows,
         ];
     }
+
+    /**
+     * @return array{generated_at: string, currency_code: string, filters: array<string, mixed>, rows: list<array<string, mixed>>, totals: array<string, string|int>}
+     */
+    public function cancelledClientsReport(?int $buildingId = null, ?string $from = null, ?string $to = null): array
+    {
+        $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
+        $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
+
+        $clients = Client::query()
+            ->with(['building', 'unit'])
+            ->where('status', ClientStatus::Disabled)
+            ->when($buildingId, fn ($q) => $q->where('sale_building_id', $buildingId))
+            ->when($fromDate, fn ($q) => $q->where('updated_at', '>=', $fromDate))
+            ->when($toDate, fn ($q) => $q->where('updated_at', '<=', $toDate))
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $rows = [];
+        $totalSalePrice = '0.00';
+        $totalHistoricalPaid = '0.00';
+
+        foreach ($clients as $client) {
+            $historicalPaid = $this->historicalPaidTotal($client);
+            $cancelledPaymentCount = $client->payments()
+                ->where('status', SalesPaymentStatus::Cancelled)
+                ->count();
+
+            $rows[] = [
+                'client_id' => $client->id,
+                'client_name' => $client->name,
+                'building_id' => $client->sale_building_id,
+                'building_name' => $client->building?->name,
+                'unit_label' => $client->unit?->house_number,
+                'agreed_sale_price' => (string) $client->agreed_sale_price,
+                'deposit' => (string) $client->deposit,
+                'historical_paid_total' => $historicalPaid,
+                'cancelled_payment_count' => $cancelledPaymentCount,
+                'registration_date' => $client->registration_date?->toDateString(),
+                'disabled_at' => $client->updated_at?->toISOString(),
+            ];
+
+            $totalSalePrice = bcadd($totalSalePrice, (string) $client->agreed_sale_price, 2);
+            $totalHistoricalPaid = bcadd($totalHistoricalPaid, $historicalPaid, 2);
+        }
+
+        return [
+            'generated_at' => now()->toISOString(),
+            'currency_code' => MoneyConfig::salesCurrency(),
+            'filters' => [
+                'building_id' => $buildingId,
+                'from' => $from,
+                'to' => $to,
+            ],
+            'rows' => $rows,
+            'totals' => [
+                'clients' => count($rows),
+                'agreed_sale_price' => $totalSalePrice,
+                'historical_paid_total' => $totalHistoricalPaid,
+            ],
+        ];
+    }
+
+    /**
+     * @return array{generated_at: string, currency_code: string, filters: array<string, mixed>, rows: list<array<string, mixed>>, totals: array<string, string|int>}
+     */
+    public function cancelledPaymentsReport(?int $buildingId = null, ?string $from = null, ?string $to = null): array
+    {
+        $salesCurrency = MoneyConfig::salesCurrency();
+        $fromDate = $from ? Carbon::parse($from)->startOfDay() : null;
+        $toDate = $to ? Carbon::parse($to)->endOfDay() : null;
+
+        $payments = SalesPayment::query()
+            ->with(['client.unit', 'building', 'cancelledBy'])
+            ->where('status', SalesPaymentStatus::Cancelled)
+            ->when($buildingId, fn ($q) => $q->where('sale_building_id', $buildingId))
+            ->when($fromDate, fn ($q) => $q->where('cancelled_at', '>=', $fromDate))
+            ->when($toDate, fn ($q) => $q->where('cancelled_at', '<=', $toDate))
+            ->orderByDesc('cancelled_at')
+            ->get();
+
+        $rows = [];
+        $totalAmount = '0.00';
+        $totalDiscount = '0.00';
+
+        foreach ($payments as $payment) {
+            $rows[] = [
+                'id' => $payment->id,
+                'client_id' => $payment->client_id,
+                'client_name' => $payment->client?->name,
+                'building_id' => $payment->sale_building_id,
+                'building_name' => $payment->building?->name,
+                'unit_label' => $payment->client?->unit?->house_number,
+                'amount' => (string) $payment->amount,
+                'currency_code' => $payment->currency_code ?? $salesCurrency,
+                'discount' => (string) $payment->discount,
+                'invoice_reference' => $payment->invoice_reference,
+                'bank' => $payment->bank,
+                'remark' => $payment->remark,
+                'paid_at' => $payment->paid_at?->toISOString(),
+                'cancelled_at' => $payment->cancelled_at?->toISOString(),
+                'cancelled_by_name' => $payment->cancelledBy?->name,
+            ];
+
+            $totalAmount = bcadd($totalAmount, (string) $payment->amount, 2);
+            $totalDiscount = bcadd($totalDiscount, (string) $payment->discount, 2);
+        }
+
+        return [
+            'generated_at' => now()->toISOString(),
+            'currency_code' => $salesCurrency,
+            'filters' => [
+                'building_id' => $buildingId,
+                'from' => $from,
+                'to' => $to,
+            ],
+            'rows' => $rows,
+            'totals' => [
+                'payments' => count($rows),
+                'amount' => $totalAmount,
+                'discount' => $totalDiscount,
+                'credited_total' => bcadd($totalAmount, $totalDiscount, 2),
+            ],
+        ];
+    }
+
+    private function historicalPaidTotal(Client $client): string
+    {
+        $payments = (string) $client->payments()->sum('amount');
+        $discounts = (string) $client->payments()->sum('discount');
+
+        return bcadd(bcadd($payments, (string) $client->deposit, 2), $discounts, 2);
+    }
 }

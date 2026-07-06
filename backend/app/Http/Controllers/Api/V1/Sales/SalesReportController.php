@@ -86,6 +86,57 @@ class SalesReportController extends Controller
         return response()->json($report);
     }
 
+    public function cancelledClients(SalesReportFilterRequest $request): JsonResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', SaleBuilding::class);
+
+        $report = $this->reportService->cancelledClientsReport(
+            $request->integer('building_id') ?: null,
+            $request->input('from'),
+            $request->input('to'),
+        );
+
+        return $this->respond($request, $report, 'sales-cancelled-clients.csv', [
+            'Client', 'Building', 'Unit', 'Sale price', 'Deposit', 'Historical paid', 'Cancelled payments', 'Registered', 'Disabled at',
+        ], fn (array $row) => [
+            $row['client_name'],
+            $row['building_name'],
+            $row['unit_label'],
+            $row['agreed_sale_price'],
+            $row['deposit'],
+            $row['historical_paid_total'],
+            $row['cancelled_payment_count'],
+            $row['registration_date'],
+            $row['disabled_at'],
+        ]);
+    }
+
+    public function cancelledPayments(SalesReportFilterRequest $request): JsonResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', SaleBuilding::class);
+
+        $report = $this->reportService->cancelledPaymentsReport(
+            $request->integer('building_id') ?: null,
+            $request->input('from'),
+            $request->input('to'),
+        );
+
+        return $this->respond($request, $report, 'sales-cancelled-payments.csv', [
+            'Client', 'Building', 'Unit', 'Amount', 'Discount', 'Reference', 'Bank', 'Paid at', 'Cancelled at', 'Cancelled by',
+        ], fn (array $row) => [
+            $row['client_name'],
+            $row['building_name'],
+            $row['unit_label'],
+            $row['amount'],
+            $row['discount'],
+            $row['invoice_reference'],
+            $row['bank'],
+            $row['paid_at'],
+            $row['cancelled_at'],
+            $row['cancelled_by_name'],
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $report
      * @param  list<string>  $headers

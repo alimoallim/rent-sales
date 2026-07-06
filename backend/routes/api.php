@@ -108,6 +108,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('tenant-balances', [RentalReportController::class, 'tenantBalances']);
             Route::get('payment-history', [RentalReportController::class, 'paymentHistory']);
             Route::get('charge-summary', [RentalReportController::class, 'chargeSummary']);
+            Route::get('arrears-aging', [RentalReportController::class, 'arrearsAging']);
             Route::get('income-statement', [RentalReportController::class, 'incomeStatement']);
         });
     });
@@ -132,6 +133,8 @@ Route::prefix('v1')->group(function (): void {
         Route::prefix('reports')->group(function (): void {
             Route::get('balance', [SalesReportController::class, 'balance']);
             Route::get('income-statement', [SalesReportController::class, 'incomeStatement']);
+            Route::get('cancelled-clients', [SalesReportController::class, 'cancelledClients']);
+            Route::get('cancelled-payments', [SalesReportController::class, 'cancelledPayments']);
         });
     });
 

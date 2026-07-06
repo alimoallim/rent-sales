@@ -196,4 +196,55 @@ class RentalReportTest extends TestCase
         $response->assertHeader('content-type', 'text/csv; charset=UTF-8');
         $this->assertStringContainsString('Jane Doe', $response->streamedContent());
     }
+
+    public function test_arrears_aging_report(): void
+    {
+        \Illuminate\Support\Carbon::setTestNow('2026-07-06');
+
+        $user = $this->rentalUser();
+        $building = RentalBuilding::query()->create(['name' => 'Aging Tower']);
+        $unit = RentalUnit::query()->create([
+            'rental_building_id' => $building->id,
+            'house_number' => 'B1',
+            'floor' => '1',
+            'description' => '1 bed',
+            'monthly_rent' => 50000,
+            'status' => RentalUnitStatus::Occupied,
+        ]);
+        $tenant = Tenant::query()->create([
+            'rental_building_id' => $building->id,
+            'rental_unit_id' => $unit->id,
+            'name' => 'Overdue Tenant',
+            'phone' => '0700111222',
+            'deposit' => 0,
+            'service_amount' => 0,
+            'status' => TenantStatus::Active,
+            'created_by' => $user->id,
+        ]);
+
+        RentCharge::query()->create([
+            'tenant_id' => $tenant->id,
+            'rental_unit_id' => $unit->id,
+            'rental_building_id' => $building->id,
+            'billing_month' => 1,
+            'billing_year' => 2026,
+            'rent_amount' => 50000,
+            'service_amount' => 0,
+            'total_amount' => 50000,
+            'purpose' => 'Rent + service',
+            'charged_at' => '2026-01-31',
+        ]);
+
+        $this->actingAs($user)
+            ->getJson('/api/v1/rental/reports/arrears-aging?outstanding_only=1')
+            ->assertOk()
+            ->assertJsonPath('totals.tenants', 1)
+            ->assertJsonPath('rows.0.tenant_name', 'Overdue Tenant')
+            ->assertJsonPath('rows.0.days_90_plus', '50000.00');
+
+        $this->actingAs($user)
+            ->get('/api/v1/rental/reports/arrears-aging?format=csv')
+            ->assertOk()
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
+    }
 }

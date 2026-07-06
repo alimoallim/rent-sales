@@ -89,6 +89,34 @@ class RentalReportController extends Controller
         ]);
     }
 
+    public function arrearsAging(ReportFilterRequest $request): JsonResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', RentalBuilding::class);
+
+        $asOf = $request->filled('as_of') ? \Illuminate\Support\Carbon::parse($request->input('as_of'))->startOfDay() : null;
+
+        $report = $this->reports->arrearsAging(
+            $request->integer('building_id') ?: null,
+            $request->boolean('outstanding_only', true),
+            $asOf,
+        );
+
+        return $this->respond($request, $report, 'arrears-aging.csv', [
+            'Tenant', 'Building', 'Unit', 'Total balance', 'Current (0–30)', '31–60 days', '61–90 days', '90+ days', 'Oldest period', 'Max days overdue',
+        ], fn (array $row) => [
+            $row['tenant_name'],
+            $row['building_name'],
+            $row['unit_label'],
+            $row['total_balance'],
+            $row['current'],
+            $row['days_31_60'],
+            $row['days_61_90'],
+            $row['days_90_plus'],
+            $row['oldest_overdue_period'],
+            $row['max_days_overdue'],
+        ]);
+    }
+
     public function incomeStatement(IncomeStatementRequest $request): JsonResponse|StreamedResponse
     {
         $this->authorize('viewAny', RentalBuilding::class);

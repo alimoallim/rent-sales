@@ -25,6 +25,7 @@ class ReportFilterRequest extends FormRequest
             'to' => ['nullable', 'date'],
             'outstanding_only' => ['nullable', 'boolean'],
             'include_voided' => ['nullable', 'boolean'],
+            'as_of' => ['nullable', 'date'],
             'format' => ['nullable', 'in:json,csv'],
         ];
     }

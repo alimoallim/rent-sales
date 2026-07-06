@@ -19,7 +19,10 @@ use Illuminate\Support\Collection;
 
 class RentalReportService
 {
-    public function __construct(private readonly TenantBalanceCalculator $balanceCalculator) {}
+    public function __construct(
+        private readonly TenantBalanceCalculator $balanceCalculator,
+        private readonly ArrearsAgingService $arrearsAging,
+    ) {}
 
     /**
      * @return array{generated_at: string, filters: array<string, mixed>, rows: list<array<string, mixed>>, totals: array<string, string>}
@@ -90,6 +93,14 @@ class RentalReportService
                 'balance' => $totalBalance,
             ],
         ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function arrearsAging(?int $buildingId = null, bool $outstandingOnly = true, ?Carbon $asOf = null): array
+    {
+        return $this->arrearsAging->report($buildingId, $outstandingOnly, $asOf);
     }
 
     /**
