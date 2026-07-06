@@ -89,7 +89,7 @@ rent-sales-platform/
 |----------|------|
 | High | Production deploy V4 + SMTP + cron |
 | High | Legacy data import (full SQL dump) |
-| Medium | Tenant/client document uploads (photos, signatures) |
+| Medium | Tenant/client document uploads (photos, signatures) | Done |
 | Medium | Payment receipts (printable per payment) |
 | Low | Arrears aging report, sales installment schedules |
 | Low | CI pipeline (GitHub Actions), frontend route lazy-loading |

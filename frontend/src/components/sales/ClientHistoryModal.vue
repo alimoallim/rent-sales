@@ -13,7 +13,32 @@
     <p v-else-if="error" class="alert-error">{{ error }}</p>
 
     <template v-else>
-      <div>
+      <div class="segmented-control mb-4">
+        <button
+          type="button"
+          class="segmented-option"
+          :class="{ 'segmented-option-active': tab === 'profile' }"
+          @click="tab = 'profile'"
+        >
+          Personal details
+        </button>
+        <button
+          type="button"
+          class="segmented-option"
+          :class="{ 'segmented-option-active': tab === 'payments' }"
+          @click="tab = 'payments'"
+        >
+          Payment history
+        </button>
+      </div>
+
+      <PersonProfilePanel
+        v-if="tab === 'profile' && client"
+        :entity="client"
+        module="sales"
+      />
+
+      <div v-else-if="tab === 'payments'">
         <div class="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <div class="rounded-md border border-zinc-200 bg-zinc-50 dark:bg-zinc-900/50 px-3 py-2.5">
             <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Agreed unit price</p>
@@ -73,7 +98,7 @@
         Close
       </button>
       <button
-        v-if="!loading && !error"
+        v-if="!loading && !error && tab === 'payments'"
         type="button"
         class="btn-secondary w-full sm:w-auto"
         @click="printStatement"
@@ -87,6 +112,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import AppDialog from '../ui/AppDialog.vue'
+import PersonProfilePanel from '../ui/PersonProfilePanel.vue'
 import ClientPaymentHistory from './ClientPaymentHistory.vue'
 import { fetchClient, fetchClientPaymentSummary, fetchPayments } from '../../api/sales'
 import { formatMoney } from '../../utils/money'
@@ -99,6 +125,7 @@ const props = defineProps({
 })
 
 const open = defineModel('open', { type: Boolean, default: false })
+const tab = defineModel('tab', { type: String, default: 'profile' })
 
 const loading = ref(false)
 const error = ref('')
@@ -108,6 +135,7 @@ const payments = ref([])
 const paymentsTruncated = ref(false)
 
 const modalSubtitle = computed(() => {
+  if (tab.value === 'profile') return 'Contact, sale terms, and uploaded documents'
   if (!client.value) return 'Sale account summary'
   return [client.value.building_name, client.value.unit_label ? `Unit ${client.value.unit_label}` : null]
     .filter(Boolean)

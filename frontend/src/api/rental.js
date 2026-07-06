@@ -48,6 +48,11 @@ export async function fetchTenants(params = {}) {
   return data
 }
 
+export async function fetchTenant(tenantId) {
+  const { data } = await api.get(`/api/v1/rental/tenants/${tenantId}`)
+  return data.data
+}
+
 export async function fetchTenantPaymentSummary(tenantId, params = {}) {
   const { data } = await api.get(`/api/v1/rental/tenants/${tenantId}/payment-summary`, { params })
   return data.data

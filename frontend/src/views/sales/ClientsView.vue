@@ -229,6 +229,17 @@
             </FormField>
           </div>
         </div>
+
+        <DocumentUploadPanel
+          v-if="editing"
+          class="lg:col-span-2"
+          module="sales"
+          :entity-id="editing.id"
+          :kinds="['photo', 'signature', 'id_document']"
+        />
+        <p v-else class="text-xs text-zinc-500 dark:text-zinc-400 lg:col-span-2">
+          Save the client first to upload photo, signature, or ID documents.
+        </p>
       </form>
       <p v-if="error" class="mt-3 alert-error">{{ error }}</p>
       <template #footer>
@@ -249,6 +260,7 @@ import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import UnitSearchSelect from '../../components/ui/UnitSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import FormField from '../../components/ui/FormField.vue'
+import DocumentUploadPanel from '../../components/ui/DocumentUploadPanel.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'

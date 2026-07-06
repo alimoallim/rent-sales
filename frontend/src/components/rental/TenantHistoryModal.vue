@@ -21,6 +21,14 @@
       <button
         type="button"
         class="segmented-option"
+        :class="{ 'segmented-option-active': tab === 'profile' }"
+        @click="setTab('profile')"
+      >
+        Personal details
+      </button>
+      <button
+        type="button"
+        class="segmented-option"
         :class="{ 'segmented-option-active': tab === 'payments' }"
         @click="setTab('payments')"
       >
@@ -37,10 +45,16 @@
     </div>
 
     <div v-if="loading" class="py-12 text-center text-sm text-zinc-500 dark:text-zinc-400">
-      Loading {{ tab === 'payments' ? 'payments' : 'charges' }}…
+      Loading {{ loadingLabel }}…
     </div>
 
     <p v-else-if="error" class="alert-error">{{ error }}</p>
+
+    <PersonProfilePanel
+      v-else-if="tab === 'profile' && tenant"
+      :entity="tenant"
+      module="rental"
+    />
 
     <TenantPaymentHistory
       v-else-if="tab === 'payments'"
@@ -103,11 +117,13 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import AppDialog from '../ui/AppDialog.vue'
+import PersonProfilePanel from '../ui/PersonProfilePanel.vue'
 import TenantChargeStatement from './TenantChargeStatement.vue'
 import TenantPaymentHistory from './TenantPaymentHistory.vue'
 import {
   fetchCharges,
   fetchPayments,
+  fetchTenant,
   fetchTenantPaymentSummary,
   updateCharge,
 } from '../../api/rental'
@@ -121,10 +137,11 @@ const props = defineProps({
 })
 
 const open = defineModel('open', { type: Boolean, default: false })
-const tab = defineModel('tab', { type: String, default: 'payments' })
+const tab = defineModel('tab', { type: String, default: 'profile' })
 
 const loading = ref(false)
 const error = ref('')
+const tenant = ref(null)
 const payments = ref([])
 const charges = ref([])
 const paymentsTruncated = ref(false)
@@ -138,11 +155,16 @@ const chargeSaving = ref(false)
 const chargeForm = reactive({ rent_amount: 0, service_amount: 0, purpose: '' })
 
 const modalSubtitle = computed(() => {
+  if (tab.value === 'profile') return 'Contact, agreement terms, and uploaded documents'
   if (metaLabel.value) return metaLabel.value
   return tab.value === 'payments' ? 'Recorded rent and utility payments' : 'Monthly charges by billing period'
 })
 
-
+const loadingLabel = computed(() => {
+  if (tab.value === 'profile') return 'tenant profile'
+  if (tab.value === 'payments') return 'payments'
+  return 'charges'
+})
 
 function setTab(next) {
   tab.value = next
@@ -159,6 +181,14 @@ async function loadBalance() {
   } catch {
     balanceSummary.value = null
   }
+}
+
+async function loadProfile() {
+  tenant.value = await fetchTenant(props.tenantId)
+
+  metaLabel.value = [tenant.value.building_name, tenant.value.unit_label ? `Unit ${tenant.value.unit_label}` : null]
+    .filter(Boolean)
+    .join(' · ')
 }
 
 async function loadPayments() {
@@ -191,13 +221,15 @@ async function loadTab() {
   loading.value = true
   error.value = ''
   try {
-    if (tab.value === 'payments') {
+    if (tab.value === 'profile') {
+      await loadProfile()
+    } else if (tab.value === 'payments') {
       await loadPayments()
     } else {
       await loadCharges()
     }
   } catch {
-    error.value = `Could not load ${tab.value === 'payments' ? 'payment' : 'charge'} history.`
+    error.value = `Could not load ${loadingLabel.value}.`
   } finally {
     loading.value = false
   }
@@ -248,6 +280,7 @@ function printCharges() {
 }
 
 function onClose() {
+  tenant.value = null
   payments.value = []
   charges.value = []
   error.value = ''
