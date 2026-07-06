@@ -4,12 +4,10 @@ namespace App\Services\Sales;
 
 use App\Enums\ClientStatus;
 use App\Enums\SalesPaymentStatus;
-use App\Enums\SaleUnitStatus;
 use App\Models\Client;
 use App\Models\SalesExpense;
 use App\Models\SalesPayment;
 use App\Models\SaleBuilding;
-use App\Models\SaleUnit;
 use App\Support\MoneyConfig;
 use Illuminate\Support\Carbon;
 
@@ -273,6 +271,78 @@ class SalesReportService
             'rows' => $rows,
             'totals' => [
                 'payments' => count($rows),
+                'amount' => $totalAmount,
+                'discount' => $totalDiscount,
+                'credited_total' => bcadd($totalAmount, $totalDiscount, 2),
+            ],
+        ];
+    }
+
+    /**
+     * @return array{generated_at: string, currency_code: string, filters: array<string, mixed>, rows: list<array<string, mixed>>, totals: array<string, string|int>}
+     */
+    public function paymentHistory(
+        ?int $buildingId = null,
+        ?int $clientId = null,
+        ?string $from = null,
+        ?string $to = null,
+        bool $includeCancelled = false,
+    ): array {
+        $salesCurrency = MoneyConfig::salesCurrency();
+
+        $payments = SalesPayment::query()
+            ->with(['client.unit', 'building'])
+            ->when($buildingId, fn ($q) => $q->where('sale_building_id', $buildingId))
+            ->when($clientId, fn ($q) => $q->where('client_id', $clientId))
+            ->when($from, fn ($q) => $q->whereDate('paid_at', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('paid_at', '<=', $to))
+            ->when(! $includeCancelled, fn ($q) => $q->where('status', SalesPaymentStatus::Active))
+            ->orderBy('paid_at')
+            ->get();
+
+        $rows = [];
+        $totalAmount = '0.00';
+        $totalDiscount = '0.00';
+        $activeCount = 0;
+
+        foreach ($payments as $payment) {
+            $rows[] = [
+                'payment_id' => $payment->id,
+                'paid_at' => $payment->paid_at?->toDateString(),
+                'client_id' => $payment->client_id,
+                'client_name' => $payment->client?->name,
+                'building_id' => $payment->sale_building_id,
+                'building_name' => $payment->building?->name,
+                'unit_label' => $payment->client?->unit?->house_number,
+                'invoice_reference' => $payment->invoice_reference,
+                'bank' => $payment->bank,
+                'amount' => (string) $payment->amount,
+                'currency_code' => $payment->currency_code ?? $salesCurrency,
+                'discount' => (string) $payment->discount,
+                'status' => $payment->status->value,
+            ];
+
+            if ($payment->status === SalesPaymentStatus::Active) {
+                $totalAmount = bcadd($totalAmount, (string) $payment->amount, 2);
+                $totalDiscount = bcadd($totalDiscount, (string) $payment->discount, 2);
+                $activeCount++;
+            }
+        }
+
+        return [
+            'generated_at' => now()->toISOString(),
+            'currency_code' => $salesCurrency,
+            'filters' => [
+                'building_id' => $buildingId,
+                'client_id' => $clientId,
+                'from' => $from,
+                'to' => $to,
+                'include_cancelled' => $includeCancelled,
+            ],
+            'rows' => $rows,
+            'totals' => [
+                'payments' => count($rows),
+                'active_payments' => $activeCount,
                 'amount' => $totalAmount,
                 'discount' => $totalDiscount,
                 'credited_total' => bcadd($totalAmount, $totalDiscount, 2),

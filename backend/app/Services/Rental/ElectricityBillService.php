@@ -78,6 +78,41 @@ class ElectricityBillService
         return $bill->fresh(['tenant', 'building', 'rentCharge']);
     }
 
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    public function update(TenantElectricityBill $bill, array $data): TenantElectricityBill
+    {
+        $context = $this->meterReadingResolver->context(
+            TenantElectricityBill::class,
+            $bill->tenant_id,
+            $bill->billing_month,
+            $bill->billing_year,
+        );
+
+        if ($context['previous_reading_locked']) {
+            unset($data['previous_reading']);
+            $data['previous_reading'] = $context['previous_reading'];
+        }
+
+        $calculated = $this->calculateAmounts($data);
+        $amount = $data['amount'] ?? $calculated['amount'];
+
+        return DB::transaction(function () use ($bill, $data, $calculated, $amount): TenantElectricityBill {
+            $bill->update([
+                ...$data,
+                'consumption' => $calculated['consumption'],
+                'amount' => $amount,
+            ]);
+
+            $bill = $bill->fresh(['tenant', 'building']);
+
+            $this->utilitySync->syncElectricityBill($bill);
+
+            return $bill;
+        });
+    }
+
     private function assertUniquePeriod(int $tenantId, int $month, int $year, ?int $exceptId = null): void
     {
         $query = TenantElectricityBill::query()

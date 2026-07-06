@@ -137,6 +137,33 @@ class SalesReportController extends Controller
         ]);
     }
 
+    public function paymentHistory(SalesReportFilterRequest $request): JsonResponse|StreamedResponse
+    {
+        $this->authorize('viewAny', SaleBuilding::class);
+
+        $report = $this->reportService->paymentHistory(
+            $request->integer('building_id') ?: null,
+            $request->integer('client_id') ?: null,
+            $request->input('from'),
+            $request->input('to'),
+            $request->boolean('include_cancelled'),
+        );
+
+        return $this->respond($request, $report, 'sales-payment-history.csv', [
+            'Date', 'Client', 'Building', 'Unit', 'Reference', 'Bank', 'Amount', 'Discount', 'Status',
+        ], fn (array $row) => [
+            $row['paid_at'],
+            $row['client_name'],
+            $row['building_name'],
+            $row['unit_label'],
+            $row['invoice_reference'],
+            $row['bank'],
+            $row['amount'],
+            $row['discount'],
+            $row['status'],
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $report
      * @param  list<string>  $headers

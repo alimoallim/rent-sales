@@ -76,6 +76,9 @@ class LegacyImporter
     /** @var array<int, string> */
     private array $waterBillStatusByLegacyId = [];
 
+    /** @var array<string, true> */
+    private array $importedWaterBillPeriods = [];
+
     private ?int $fallbackUserId = null;
 
     public function __construct(
@@ -98,6 +101,7 @@ class LegacyImporter
         bool $skipUsers = false,
     ): LegacyImportReport {
         $this->report = new LegacyImportReport;
+        $this->importedWaterBillPeriods = [];
         $this->data = $this->normalizeParsedData($this->parser->parseFile($path));
 
         if (! $dryRun && ! $fresh && RentalBuilding::query()->whereNotNull('legacy_id')->exists()) {
@@ -194,8 +198,8 @@ class LegacyImporter
             $this->report->increment('users_mapped');
         }
 
-        if (! $dryRun && $this->userIds === []) {
-            throw new RuntimeException('No legacy users matched existing greenfield accounts. Import users or run without --skip-users.');
+        if ($this->userIds === []) {
+            $this->report->warn('No legacy users matched existing greenfield accounts; attribution will use the fallback manager account.');
         }
     }
 
@@ -566,7 +570,7 @@ class LegacyImporter
                 'service_amount' => $this->money($row['service'] ?? 0),
                 'total_amount' => $this->money($row['total'] ?? 0),
                 'purpose' => $purpose,
-                'charged_at' => (string) $row['charge_date'],
+                'charged_at' => $this->legacyTimestamp($row['charge_date'] ?? null, 'charge', $legacyId),
             ]);
 
             $this->report->increment('rent_charges');
@@ -609,11 +613,31 @@ class LegacyImporter
 
             $statusValue = $this->waterBillStatusByLegacyId[$legacyId] ?? WaterBillStatus::Recorded->value;
             $amount = $this->money($row['amount'] ?? 0);
+            $periodKey = "{$tenantId}:{$period['month']}:{$period['year']}";
+
+            if (isset($this->importedWaterBillPeriods[$periodKey])) {
+                $this->report->skip('tenant_water_bills');
+                $this->report->warn("Skipped water bill {$legacyId}: duplicate period for tenant {$tenantLegacyId}.");
+
+                continue;
+            }
 
             if ($dryRun) {
+                $this->importedWaterBillPeriods[$periodKey] = true;
                 $this->waterBillIds[$legacyId] = $legacyId;
                 $this->report->increment('tenant_water_bills');
                 $this->report->increment('rent_charges_water');
+                continue;
+            }
+
+            if (TenantWaterBill::query()
+                ->where('tenant_id', $tenantId)
+                ->where('billing_month', $period['month'])
+                ->where('billing_year', $period['year'])
+                ->exists()) {
+                $this->report->skip('tenant_water_bills');
+                $this->report->warn("Skipped water bill {$legacyId}: duplicate period for tenant {$tenantLegacyId}.");
+
                 continue;
             }
 
@@ -636,6 +660,7 @@ class LegacyImporter
             ]);
 
             $this->waterBillIds[$legacyId] = $bill->id;
+            $this->importedWaterBillPeriods[$periodKey] = true;
 
             $unitId = Tenant::query()->whereKey($tenantId)->value('rental_unit_id');
 
@@ -651,7 +676,7 @@ class LegacyImporter
                 'total_amount' => $amount,
                 'purpose' => WaterBillService::CHARGE_PURPOSE,
                 'tenant_water_bill_id' => $bill->id,
-                'charged_at' => (string) ($row['date_created'] ?? now()),
+                'charged_at' => $this->legacyTimestamp($row['date_created'] ?? null, 'water bill charge', $legacyId),
             ]);
 
             $this->report->increment('tenant_water_bills');
@@ -685,7 +710,7 @@ class LegacyImporter
                 'amount' => $this->money($row['amount'] ?? 0),
                 'discount' => $this->money($row['discount'] ?? 0),
                 'invoice_reference' => $this->nullableString($row['invoice'] ?? null),
-                'paid_at' => (string) $row['date_created'],
+                'paid_at' => $this->legacyTimestamp($row['date_created'] ?? null, 'payment', $legacyId),
                 'status' => RentPaymentStatus::Active,
                 'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
@@ -761,7 +786,7 @@ class LegacyImporter
             }
 
             $key = "{$buildingId}:{$period['month']}:{$period['year']}";
-            $billedAt = date('Y-m-d', strtotime((string) $row['date_created']));
+            $billedAt = substr($this->legacyTimestamp($row['date_created'] ?? null, 'kenya_water', $legacyId), 0, 10);
             $remark = $this->nullableString($row['remark'] ?? null);
 
             if (! isset($groups[$key])) {
@@ -925,7 +950,7 @@ class LegacyImporter
                 'billing_month' => $period['month'],
                 'billing_year' => $period['year'],
                 'salary_amount' => $this->money($row['salary'] ?? 0),
-                'paid_at' => (string) ($row['date'] ?? now()),
+                'paid_at' => $this->legacyTimestamp($row['date'] ?? null, 'payroll', $legacyId),
                 'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
             ]);
 
@@ -1129,6 +1154,8 @@ class LegacyImporter
                 continue;
             }
 
+            $paidAt = $this->legacyTimestamp($row['date_created'] ?? null, 'sales payment', $legacyId);
+
             DB::table('sales_payments')->insert([
                 'legacy_id' => $legacyId,
                 'currency_code' => MoneyConfig::salesCurrency(),
@@ -1139,9 +1166,9 @@ class LegacyImporter
                 'invoice_reference' => $this->nullableString($row['invoice'] ?? null),
                 'bank' => $this->nullableString($row['bank'] ?? null),
                 'remark' => $this->nullableString($row['remark'] ?? null),
-                'paid_at' => (string) $row['date_created'],
+                'paid_at' => $paidAt,
                 'status' => $status,
-                'cancelled_at' => $status === 'cancelled' ? (string) $row['date_created'] : null,
+                'cancelled_at' => $status === 'cancelled' ? $paidAt : null,
                 'cancelled_by' => $status === 'cancelled' ? $this->resolveUserId($this->legacyUserReference($row)) : null,
                 'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
                 'created_at' => now(),
@@ -1238,10 +1265,46 @@ class LegacyImporter
 
     private function nullableDate(mixed $value): ?string
     {
-        if ($value === null || $value === '' || $value === '0000-00-00') {
+        $timestamp = $this->normalizeLegacyTimestamp($value);
+
+        return $timestamp === null ? null : substr($timestamp, 0, 10);
+    }
+
+    private function legacyTimestamp(mixed $value, string $context, ?int $legacyId = null): string
+    {
+        $timestamp = $this->normalizeLegacyTimestamp($value);
+        if ($timestamp !== null) {
+            return $timestamp;
+        }
+
+        if ($legacyId !== null) {
+            $this->report->warn("Used fallback timestamp for {$context} {$legacyId}: invalid date ".(string) $value);
+        }
+
+        return now()->toDateTimeString();
+    }
+
+    private function normalizeLegacyTimestamp(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
             return null;
         }
 
-        return (string) $value;
+        $string = trim((string) $value);
+        if ($string === '0000-00-00' || str_starts_with($string, '0000-00-00')) {
+            return null;
+        }
+
+        $parsed = strtotime($string);
+        if ($parsed === false || $parsed < 0) {
+            return null;
+        }
+
+        $year = (int) date('Y', $parsed);
+        if ($year < 1970 || $year > 2100) {
+            return null;
+        }
+
+        return date('Y-m-d H:i:s', $parsed);
     }
 }

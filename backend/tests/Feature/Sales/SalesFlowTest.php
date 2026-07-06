@@ -72,7 +72,7 @@ class SalesFlowTest extends TestCase
     }
 
     #[Test]
-    public function test_cannot_disable_client_with_active_payments(): void
+    public function test_can_disable_client_with_active_payments(): void
     {
         $building = SaleBuilding::query()->create(['name' => 'Test Building']);
         $unit = SaleUnit::query()->create([
@@ -102,7 +102,11 @@ class SalesFlowTest extends TestCase
         ])->assertCreated();
 
         $this->actingAs($this->user)->postJson("/api/v1/sales/clients/{$client->id}/disable")
-            ->assertStatus(422);
+            ->assertOk()
+            ->assertJsonPath('data.status', 'disabled');
+
+        $this->assertSame('available', $unit->fresh()->status->value);
+        $this->assertSame(1, $client->payments()->where('status', 'active')->count());
     }
 
     #[Test]

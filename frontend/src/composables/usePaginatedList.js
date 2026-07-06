@@ -55,13 +55,8 @@ export function usePaginatedList(fetchFn, options = {}) {
     await load()
   }
 
-  let searchTimer = null
-
   function onSearchChange() {
-    clearTimeout(searchTimer)
-    searchTimer = setTimeout(() => {
-      reload()
-    }, 300)
+    reload()
   }
 
   return {

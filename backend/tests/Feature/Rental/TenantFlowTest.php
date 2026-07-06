@@ -6,6 +6,7 @@ use App\Enums\RentalUnitStatus;
 use App\Enums\TenantStatus;
 use App\Models\RentalBuilding;
 use App\Models\RentalUnit;
+use App\Models\RentCharge;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -153,6 +154,57 @@ class TenantFlowTest extends TestCase
             'tenant_id' => $tenant->id,
             'refund_amount' => 50000,
         ]);
+    }
+
+    public function test_inactive_tenant_list_includes_balance_and_accepts_arrears_payment(): void
+    {
+        $user = $this->rentalUser();
+        $building = RentalBuilding::query()->create(['name' => 'Arrears Block']);
+        $unit = RentalUnit::query()->create([
+            'rental_building_id' => $building->id,
+            'house_number' => 'C3',
+            'floor' => '3',
+            'description' => '2 bed',
+            'monthly_rent' => 50000,
+            'status' => RentalUnitStatus::Vacant,
+        ]);
+        $tenant = Tenant::query()->create([
+            'rental_building_id' => $building->id,
+            'rental_unit_id' => $unit->id,
+            'name' => 'Former Tenant',
+            'phone' => '0722222222',
+            'deposit' => 0,
+            'service_amount' => 0,
+            'status' => TenantStatus::Inactive,
+            'requires_water_metering' => true,
+            'created_by' => $user->id,
+        ]);
+
+        RentCharge::query()->create([
+            'tenant_id' => $tenant->id,
+            'rental_building_id' => $building->id,
+            'rental_unit_id' => $unit->id,
+            'billing_month' => 5,
+            'billing_year' => 2026,
+            'rent_amount' => 50000,
+            'service_amount' => 0,
+            'total_amount' => 50000,
+            'purpose' => 'Rent + service',
+            'charged_at' => now(),
+        ]);
+
+        $this->actingAs($user)->getJson('/api/v1/rental/tenants?status=inactive')
+            ->assertOk()
+            ->assertJsonPath('data.0.balance', '50000.00')
+            ->assertJsonPath('summary.with_balance', 1);
+
+        $this->actingAs($user)->postJson('/api/v1/rental/payments', [
+            'tenant_id' => $tenant->id,
+            'rental_building_id' => $building->id,
+            'amount' => '20000.00',
+            'discount' => '0.00',
+            'paid_at' => '2026-06-10',
+        ])->assertCreated();
     }
 
     public function test_building_with_units_cannot_be_deleted(): void

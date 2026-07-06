@@ -2,6 +2,7 @@
 
 namespace App\Services\Rental;
 
+use App\Enums\TenantStatus;
 use App\Models\Tenant;
 use App\Models\TenantElectricityBill;
 use App\Models\TenantWaterBill;
@@ -14,6 +15,10 @@ class TenantMeterReadingReminderService
      */
     public function missingRequiredReadings(Tenant $tenant, ?int $billingMonth = null, ?int $billingYear = null): array
     {
+        if ($tenant->status === TenantStatus::Inactive) {
+            return [];
+        }
+
         $now = Carbon::now();
         $month = $billingMonth ?? (int) $now->month;
         $year = $billingYear ?? (int) $now->year;

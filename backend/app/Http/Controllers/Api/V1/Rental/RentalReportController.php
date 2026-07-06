@@ -134,6 +134,7 @@ class RentalReportController extends Controller
             $lines = $report['lines'];
 
             return $this->csvResponse('income-statement.csv', ['Line item', 'Amount'], [
+                ['Tenant deposits held (active)', $report['deposit_total']],
                 ['Rent collections', $lines['rent_collections']],
                 ['Service income', $lines['service_income']],
                 ['Shareholder deductions', $lines['shareholder_deductions']],

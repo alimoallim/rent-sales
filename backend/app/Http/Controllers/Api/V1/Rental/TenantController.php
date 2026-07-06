@@ -46,7 +46,7 @@ class TenantController extends Controller
             'unit' => 'house_number',
         ]);
 
-        if ($status === TenantStatus::Active->value && $request->boolean('with_balance')) {
+        if ($request->boolean('with_balance')) {
             $this->restrictToTenantsWithBalance($query);
         }
 
@@ -56,13 +56,11 @@ class TenantController extends Controller
             ->orderBy('name')
             ->paginate(ListQuery::perPage($request, 50));
 
-        if ($status === TenantStatus::Active->value) {
-            $tenants->getCollection()->transform(function (Tenant $tenant): Tenant {
-                $tenant->balance = $this->balanceCalculator->calculate($tenant);
+        $tenants->getCollection()->transform(function (Tenant $tenant): Tenant {
+            $tenant->balance = $this->balanceCalculator->calculate($tenant);
 
-                return $tenant;
-            });
-        }
+            return $tenant;
+        });
 
         return TenantResource::collection($tenants)->additional([
             'summary' => $summary,
@@ -78,7 +76,23 @@ class TenantController extends Controller
         $total = (clone $query)->count();
 
         if ($status !== TenantStatus::Active->value) {
-            return ['total' => $total];
+            $withBalance = 0;
+            $totalOutstanding = '0.00';
+
+            (clone $query)->orderBy('name')->each(function (Tenant $tenant) use (&$withBalance, &$totalOutstanding): void {
+                $balance = $this->balanceCalculator->calculate($tenant);
+
+                if (bccomp($balance, '0', 2) > 0) {
+                    $withBalance++;
+                    $totalOutstanding = bcadd($totalOutstanding, $balance, 2);
+                }
+            });
+
+            return [
+                'total' => $total,
+                'with_balance' => $withBalance,
+                'total_outstanding' => $totalOutstanding,
+            ];
         }
 
         $withBalance = 0;

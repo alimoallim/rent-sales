@@ -48,6 +48,15 @@
       >
         Record payment
       </RouterLink>
+      <button
+        v-if="canDisable"
+        type="button"
+        class="block w-full px-3 py-2 text-left text-sm text-red-600 transition-colors duration-200 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+        role="menuitem"
+        @click="disableClient"
+      >
+        Disable client
+      </button>
     </div>
 
     <ClientHistoryModal
@@ -56,6 +65,8 @@
       :client-id="clientId"
       :client-name="clientName"
       :building-id="buildingId"
+      :can-disable="canDisable"
+      @disabled="onDisabled"
     />
   </div>
 </template>
@@ -64,12 +75,21 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 import ClientHistoryModal from './ClientHistoryModal.vue'
+import { disableClient as disableClientApi } from '../../api/sales'
+import { useConfirm } from '../../composables/useConfirm'
+import { useToast } from '../../composables/useToast'
 
-defineProps({
+const props = defineProps({
   clientId: { type: [Number, String], required: true },
   clientName: { type: String, required: true },
   buildingId: { type: [Number, String], default: null },
+  canDisable: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['changed'])
+
+const { confirm } = useConfirm()
+const toast = useToast()
 
 const open = ref(false)
 const historyOpen = ref(false)
@@ -94,6 +114,30 @@ function openHistory(tab) {
   historyTab.value = tab
   historyOpen.value = true
   close()
+}
+
+async function disableClient() {
+  close()
+  const ok = await confirm({
+    title: 'Disable client',
+    message: `Disable ${props.clientName}? The unit will be marked available.`,
+    confirmLabel: 'Disable',
+    variant: 'danger',
+  })
+  if (!ok) return
+  try {
+    await disableClientApi(props.clientId)
+    toast.success('Client disabled.')
+    historyOpen.value = false
+    emit('changed')
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Could not disable client.')
+  }
+}
+
+function onDisabled() {
+  historyOpen.value = false
+  emit('changed')
 }
 
 function onDocumentClick(event) {

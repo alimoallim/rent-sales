@@ -2,6 +2,8 @@
 
 Greenfield rebuild of the legacy property-management system (rent + sales modules).
 
+![CI](https://github.com/alimoallim/rent-sales/actions/workflows/ci.yml/badge.svg)
+
 ## Status
 
 | Step | Deliverable | Status |
@@ -12,7 +14,7 @@ Greenfield rebuild of the legacy property-management system (rent + sales module
 | 3 | Auth + Vue shell | Done |
 | 4 | Rent core slice | Done |
 | 5 | Rent + sales financials | Done |
-| 5 | Legacy data migration | **Not done** — tooling ready ([LEGACY_IMPORT.md](./LEGACY_IMPORT.md)) |
+| — | Legacy data migration | Tooling + `legacy:validate` ready ([LEGACY_IMPORT.md](./LEGACY_IMPORT.md)) |
 | — | Admin ops (users, audit, recycle bin) | Done |
 | — | Auth (password reset, settings) | Done |
 | — | Production deploy V4 | See [DEPLOYMENT-V4.md](./DEPLOYMENT-V4.md) |
@@ -90,6 +92,8 @@ rent-sales-platform/
 | High | Production deploy V4 + SMTP + cron |
 | High | Legacy data import (full SQL dump) |
 | Medium | Tenant/client document uploads (photos, signatures) | Done |
-| Medium | Payment receipts (printable per payment) |
-| Low | Arrears aging report, sales installment schedules |
-| Low | CI pipeline (GitHub Actions), frontend route lazy-loading |
+| Medium | Payment receipts (printable per payment) | Done |
+| Low | Arrears aging report | Done |
+| Low | Sales cancelled clients/payments reports | Done |
+| Low | CI pipeline (GitHub Actions) | Done |
+| Low | Frontend route lazy-loading | Done |

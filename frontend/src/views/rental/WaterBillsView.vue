@@ -45,9 +45,22 @@
       <template #cell-billing_status="{ item }">
         <StatusBadge :variant="billingStatusVariant(item)" :label="item.status_label" />
       </template>
+      <template #actions="{ item }">
+        <RowActionButton
+          v-if="item.status !== 'paid'"
+          icon="edit"
+          label="Edit reading"
+          @click="openEdit(item)"
+        />
+      </template>
     </DataTable>
 
-    <AppDialog v-model:open="showForm" title="Record water reading" size="md" :close-on-backdrop="false">
+    <AppDialog
+      v-model:open="showForm"
+      :title="editing ? 'Edit water reading' : 'Record water reading'"
+      size="md"
+      :close-on-backdrop="false"
+    >
       <p class="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
         Enter the meter reading for the billing period. After the monthly charge batch is approved, this amount is added to the tenant balance. Payments are recorded in Rent Payments.
       </p>
@@ -56,6 +69,7 @@
           <BuildingSearchSelect
             v-model="form.rental_building_id"
             :buildings="buildings"
+            :disabled="Boolean(editing)"
             required
             @change="onBuildingChange"
           />
@@ -63,17 +77,18 @@
         <FormField label="Tenant" class="lg:col-span-2" required>
           <TenantSearchSelect
             v-model="form.tenant_id"
-            :tenants="activeTenants"
+            :building-id="form.rental_building_id"
+            :disabled="Boolean(editing)"
             required
           />
         </FormField>
         <FormField label="Month" required>
-          <select v-model="form.billing_month" class="input-field" required>
+          <select v-model="form.billing_month" class="input-field" :disabled="Boolean(editing)" required>
             <option v-for="month in months" :key="month.value" :value="month.value">{{ month.label }}</option>
           </select>
         </FormField>
         <FormField label="Year" required>
-          <input v-model="form.billing_year" type="number" min="2000" class="input-field" required />
+          <input v-model="form.billing_year" type="number" min="2000" class="input-field" :disabled="Boolean(editing)" required />
         </FormField>
         <FormField
           :label="readingContext?.is_first_reading ? 'Opening reading' : 'Previous reading'"
@@ -110,7 +125,7 @@
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
         <button type="button" class="btn-primary w-full sm:w-auto" :disabled="saving" @click="save">
-          {{ saving ? 'Saving…' : 'Save reading' }}
+          {{ saving ? 'Saving…' : (editing ? 'Update reading' : 'Save reading') }}
         </button>
       </template>
     </AppDialog>
@@ -129,14 +144,15 @@ import FormField from '../../components/ui/FormField.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
 import DataTable from '../../components/data/DataTable.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
+import RowActionButton from '../../components/ui/RowActionButton.vue'
 import { useToast } from '../../composables/useToast'
 import { usePaginatedList } from '../../composables/usePaginatedList'
 import {
   createWaterBill,
   fetchBuildings,
   fetchMeterReadingContext,
-  fetchTenants,
   fetchWaterBills,
+  updateWaterBill,
 } from '../../api/rental'
 import { moneyLabel } from '../../utils/money'
 
@@ -144,7 +160,7 @@ const route = useRoute()
 const toast = useToast()
 
 const buildings = ref([])
-const activeTenants = ref([])
+const editing = ref(null)
 const saving = ref(false)
 const showForm = ref(false)
 const error = ref('')
@@ -213,22 +229,12 @@ async function loadBuildings() {
   buildings.value = response.data
 }
 
-async function loadTenants(buildingId) {
-  if (!buildingId) {
-    activeTenants.value = []
-    return
-  }
-  const response = await fetchTenants({ status: 'active', building_id: buildingId })
-  activeTenants.value = response.data
-}
-
 async function loadTable() {
   await reload()
 }
 
 function onBuildingChange() {
   form.tenant_id = ''
-  loadTenants(form.rental_building_id)
 }
 
 async function loadReadingContext() {
@@ -265,6 +271,7 @@ watch(
 )
 
 function openCreate(prefill = {}) {
+  editing.value = null
   Object.assign(form, {
     tenant_id: '',
     rental_building_id: filters.building_id || '',
@@ -279,7 +286,24 @@ function openCreate(prefill = {}) {
   })
   error.value = ''
   showForm.value = true
-  loadTenants(form.rental_building_id)
+  loadReadingContext()
+}
+
+function openEdit(bill) {
+  editing.value = bill
+  Object.assign(form, {
+    tenant_id: bill.tenant_id,
+    rental_building_id: bill.rental_building_id,
+    billing_month: bill.billing_month,
+    billing_year: bill.billing_year,
+    previous_reading: bill.previous_reading,
+    current_reading: bill.current_reading,
+    rate: bill.rate,
+    fixed_fee: bill.fixed_fee,
+    remark: bill.remark || '',
+  })
+  error.value = ''
+  showForm.value = true
   loadReadingContext()
 }
 
@@ -297,6 +321,7 @@ function openCreateFromQuery() {
 
 function closeForm() {
   showForm.value = false
+  editing.value = null
 }
 
 async function save() {
@@ -307,8 +332,13 @@ async function save() {
     if (readingContext.value?.previous_reading_locked) {
       delete payload.previous_reading
     }
-    await createWaterBill(payload)
-    toast.success('Water reading saved.')
+    if (editing.value) {
+      await updateWaterBill(editing.value.id, payload)
+      toast.success('Water reading updated.')
+    } else {
+      await createWaterBill(payload)
+      toast.success('Water reading saved.')
+    }
     closeForm()
     await reload()
   } catch (e) {

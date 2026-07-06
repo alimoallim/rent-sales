@@ -44,7 +44,7 @@ class LegacyMonthMapper
         $month = $this->toBillingMonth($monthName);
         $yearInt = $year !== null && $year !== '' ? (int) $year : 0;
 
-        if ($month === null || $yearInt < 2000) {
+        if ($month === null || $yearInt < 2000 || $yearInt > 2100) {
             return null;
         }
 

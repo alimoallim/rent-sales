@@ -60,6 +60,9 @@
       v-else-if="tab === 'payments'"
       :payments="payments"
       :truncated="paymentsTruncated"
+      :tenant-name="tenantName"
+      :building-name="tenant?.building_name"
+      :unit-label="tenant?.unit_label"
     />
 
     <div v-else-if="tab === 'charges'" id="tenant-charge-print-area">
@@ -184,7 +187,9 @@ async function loadBalance() {
 }
 
 async function loadProfile() {
-  tenant.value = await fetchTenant(props.tenantId)
+  if (!tenant.value) {
+    tenant.value = await fetchTenant(props.tenantId)
+  }
 
   metaLabel.value = [tenant.value.building_name, tenant.value.unit_label ? `Unit ${tenant.value.unit_label}` : null]
     .filter(Boolean)
@@ -291,7 +296,15 @@ watch(
   () => [open.value, props.tenantId],
   async ([isOpen]) => {
     if (!isOpen || !props.tenantId) return
-    await loadBalance()
+    await Promise.all([
+      loadBalance(),
+      fetchTenant(props.tenantId).then((data) => {
+        tenant.value = data
+        metaLabel.value = [data.building_name, data.unit_label ? `Unit ${data.unit_label}` : null]
+          .filter(Boolean)
+          .join(' · ')
+      }),
+    ])
     await loadTab()
   },
 )

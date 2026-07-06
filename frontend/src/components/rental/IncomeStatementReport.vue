@@ -6,6 +6,12 @@
         {{ buildingName }}
       </h2>
       <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">For the month of {{ statement.period_label }}</p>
+      <p
+        v-if="Number(statement.deposit_total) > 0"
+        class="mt-3 inline-flex items-center rounded-full bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-800 ring-1 ring-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:ring-rose-900/60"
+      >
+        Total tenant deposits held: {{ formatMoney(statement.deposit_total, 'rental') }}
+      </p>
       <p v-if="statement.calculation_mode === 'legacy'" class="mt-3 inline-flex items-center rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 ring-1 ring-amber-200">
         Legacy calculation mode
       </p>

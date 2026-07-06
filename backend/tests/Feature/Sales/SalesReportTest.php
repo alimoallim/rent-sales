@@ -141,4 +141,44 @@ class SalesReportTest extends TestCase
             ->assertJsonPath('rows.0.client_name', 'Refund Client')
             ->assertJsonPath('rows.0.cancelled_by_name', $this->user->name);
     }
+
+    #[Test]
+    public function test_payment_history_report(): void
+    {
+        $building = SaleBuilding::query()->create(['name' => 'Payments Tower']);
+        $unit = SaleUnit::query()->create([
+            'sale_building_id' => $building->id,
+            'house_number' => 'P1',
+            'floor' => '1',
+            'description' => '2 bed',
+            'list_price' => '80000.00',
+        ]);
+
+        $client = Client::query()->create([
+            'sale_building_id' => $building->id,
+            'sale_unit_id' => $unit->id,
+            'name' => 'Payment Client',
+            'phone' => '0700777888',
+            'agreed_sale_price' => '75000.00',
+            'deposit' => '0.00',
+            'registration_date' => '2024-05-01',
+        ]);
+
+        SalesPayment::query()->create([
+            'client_id' => $client->id,
+            'sale_building_id' => $building->id,
+            'amount' => '5000.00',
+            'discount' => '0.00',
+            'paid_at' => '2024-06-15',
+            'status' => SalesPaymentStatus::Active,
+            'created_by' => $this->user->id,
+        ]);
+
+        $response = $this->actingAs($this->user)->getJson('/api/v1/sales/reports/payment-history?from=2024-06-01&to=2024-06-30');
+
+        $response->assertOk()
+            ->assertJsonPath('totals.active_payments', 1)
+            ->assertJsonPath('rows.0.client_name', 'Payment Client')
+            ->assertJsonPath('rows.0.unit_label', 'P1');
+    }
 }

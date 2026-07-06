@@ -227,6 +227,7 @@ class RentalReportService
         $expenseSubtotal = bcadd(bcadd(bcadd($expenses, $payroll, 2), $electricity, 2), $nairobiWater, 2);
         $serviceWaterNet = bcsub($serviceWaterSubtotal, $expenseSubtotal, 2);
         $netBalanceInHand = bcadd($rentNet, $serviceWaterNet, 2);
+        $depositTotal = $this->sumActiveTenantDeposits($buildingId);
 
         return [
             'generated_at' => now()->toISOString(),
@@ -236,6 +237,7 @@ class RentalReportService
             'billing_year' => $billingYear,
             'period_label' => $start->format('F Y'),
             'calculation_mode' => $mode,
+            'deposit_total' => $depositTotal,
             'lines' => [
                 'rent_collections' => $rentCollections,
                 'service_income' => $serviceIncome,
@@ -269,6 +271,14 @@ class RentalReportService
             ->where('rental_building_id', $buildingId)
             ->whereBetween('bill_date', [$start->toDateString(), $end->toDateString()])
             ->sum('amount');
+    }
+
+    private function sumActiveTenantDeposits(int $buildingId): string
+    {
+        return (string) Tenant::query()
+            ->where('rental_building_id', $buildingId)
+            ->where('status', TenantStatus::Active)
+            ->sum('deposit');
     }
 
     /** Service income from monthly rent charges (greenfield unified model). */

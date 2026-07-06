@@ -45,8 +45,8 @@ class RecycleBinController extends Controller
         $search = $request->string('search')->trim()->toString();
         if ($search !== '' && $config['name_column'] !== 'id') {
             $column = $config['name_column'];
-            $pattern = '%'.str_replace(['%', '_'], ['\%', '\_'], strtolower($search)).'%';
-            $query->whereRaw("LOWER({$column}) LIKE ?", [$pattern]);
+            $pattern = str_replace(['%', '_'], '', mb_strtolower($search, 'UTF-8')).'%';
+            $query->where($column, 'ilike', $pattern);
         }
 
         $items = $query

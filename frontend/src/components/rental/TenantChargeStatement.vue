@@ -150,7 +150,11 @@ function lineItemsForCharge(charge) {
   const chargedOn = formatChargeDate(charge.charged_at)
   const lines = []
 
-  if (charge.is_editable || charge.charge_type === 'Rent + service') {
+  if (
+    charge.is_editable
+    || charge.charge_type === 'Rent + service'
+    || charge.charge_type === 'Rent + service + generator'
+  ) {
     if (Number(charge.rent_amount) > 0) {
       lines.push({
         description: 'Monthly rent',

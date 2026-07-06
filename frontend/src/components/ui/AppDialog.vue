@@ -3,7 +3,7 @@
     <div
       v-if="open"
       class="dialog-overlay"
-      :class="{ 'dialog-overlay-fit': fit }"
+      :class="{ 'dialog-overlay-fit': fit, 'dialog-overlay-elevated': elevated }"
       role="presentation"
       @click.self="onBackdrop"
     >
@@ -62,6 +62,7 @@ const props = defineProps({
   },
   closeOnBackdrop: { type: Boolean, default: true },
   fit: { type: Boolean, default: false },
+  elevated: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:open', 'close'])

@@ -1,7 +1,7 @@
 <template>
   <div>
     <!-- Phone + tablet: stacked cards -->
-    <div class="space-y-2 lg:hidden">
+    <div class="data-list-cards space-y-2 lg:hidden">
       <div
         v-for="(item, index) in items"
         :key="rowKeyValue(item, index)"

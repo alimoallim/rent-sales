@@ -59,6 +59,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue'
+import { valuesMatchSearch } from '../../utils/search'
 import ResponsiveDataList from './ResponsiveDataList.vue'
 import TablePagination from './TablePagination.vue'
 import TableSkeleton from './TableSkeleton.vue'
@@ -139,10 +140,7 @@ const filteredItems = computed(() => {
     return sortedItems.value
   }
 
-  const query = clientSearch.value.trim().toLowerCase()
-  if (!query) {
-    return sortedItems.value
-  }
+  const query = props.search
 
   return sortedItems.value.filter((item) =>
     props.columns.some((column) => {
@@ -151,7 +149,7 @@ const filteredItems = computed(() => {
       }
 
       const value = column.format ? column.format(item) : item[column.key]
-      return String(value ?? '').toLowerCase().includes(query)
+      return valuesMatchSearch(value, query)
     }),
   )
 })

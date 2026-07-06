@@ -18,6 +18,11 @@
         placeholder="All buildings"
         @change="loadTable"
       />
+      <DateRangeFilter
+        v-model:from="filters.from"
+        v-model:to="filters.to"
+        @change="loadTable"
+      />
       <select v-model="filters.status" class="input-field" @change="loadTable">
         <option value="">All statuses</option>
         <option value="active">Active</option>
@@ -64,6 +69,12 @@
       <template #actions="{ item }">
         <RowActionButton
           v-if="item.status === 'active'"
+          icon="print"
+          label="Print receipt"
+          @click="printReceipt(item)"
+        />
+        <RowActionButton
+          v-if="item.status === 'active'"
           icon="edit"
           label="Edit"
           @click="openEdit(item)"
@@ -97,7 +108,7 @@
           <FormField label="Client" required>
             <ClientSearchSelect
               v-model="form.client_id"
-              :clients="activeClients"
+              :building-id="form.sale_building_id"
               required
               @change="onClientChange"
             />
@@ -153,13 +164,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import ClientSearchSelect from '../../components/ui/ClientSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
+import DateRangeFilter from '../../components/ui/DateRangeFilter.vue'
 import FormField from '../../components/ui/FormField.vue'
 import DataTable from '../../components/data/DataTable.vue'
 import RowActionButton from '../../components/ui/RowActionButton.vue'
@@ -171,12 +183,12 @@ import { useConfirm } from '../../composables/useConfirm'
 import { usePaginatedList } from '../../composables/usePaginatedList'
 import { useToast } from '../../composables/useToast'
 import { amountLabel, formatMoney, moneyLabel } from '../../utils/money'
+import { printSalesPaymentReceipt } from '../../utils/paymentReceipt'
 import {
   cancelPayment,
   createPayment,
   fetchBuildings,
   fetchClientPaymentSummary,
-  fetchClients,
   fetchPayments,
   updatePayment,
 } from '../../api/sales'
@@ -186,13 +198,12 @@ const { confirm } = useConfirm()
 const toast = useToast()
 
 const buildings = ref([])
-const clients = ref([])
 const saving = ref(false)
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
 const summary = ref(null)
-const filters = reactive({ building_id: '', status: '' })
+const filters = reactive({ building_id: '', status: '', from: '', to: '' })
 const form = reactive({
   client_id: '',
   sale_building_id: '',
@@ -219,11 +230,9 @@ const {
     ...params,
     building_id: filters.building_id || undefined,
     status: filters.status || undefined,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
   }),
-)
-
-const activeClients = computed(() =>
-  clients.value.filter((c) => c.status === 'active' && (!form.sale_building_id || c.sale_building_id === form.sale_building_id)),
 )
 
 const columns = [
@@ -237,11 +246,6 @@ const columns = [
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
-}
-
-async function loadClients() {
-  const response = await fetchClients({ status: 'active', per_page: 200 })
-  clients.value = response.data
 }
 
 async function loadTable() {
@@ -329,6 +333,10 @@ async function save() {
   }
 }
 
+function printReceipt(payment) {
+  printSalesPaymentReceipt(payment)
+}
+
 async function cancelOne(payment) {
   const ok = await confirm({
     title: 'Cancel payment',
@@ -348,7 +356,6 @@ async function cancelOne(payment) {
 
 onMounted(async () => {
   await loadBuildings()
-  await loadClients()
   await load()
   if (route.query.action === 'new' && route.query.client_id) {
     openCreate({

@@ -89,11 +89,26 @@
         </div>
 
         <h4 class="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Payment history</h4>
-        <ClientPaymentHistory :payments="payments" :truncated="paymentsTruncated" />
+        <ClientPaymentHistory
+          :payments="payments"
+          :truncated="paymentsTruncated"
+          :client-name="clientName"
+          :building-name="client?.building_name"
+          :unit-label="client?.unit_label"
+        />
       </div>
     </template>
 
     <template #footer>
+      <button
+        v-if="canDisable && !loading && !error && client?.status === 'active'"
+        type="button"
+        class="btn-destructive mr-auto w-full sm:w-auto"
+        :disabled="disabling"
+        @click="disableClient"
+      >
+        {{ disabling ? 'Disabling…' : 'Disable client' }}
+      </button>
       <button type="button" class="btn-secondary w-full sm:w-auto" @click="open = false">
         Close
       </button>
@@ -114,20 +129,29 @@ import { computed, ref, watch } from 'vue'
 import AppDialog from '../ui/AppDialog.vue'
 import PersonProfilePanel from '../ui/PersonProfilePanel.vue'
 import ClientPaymentHistory from './ClientPaymentHistory.vue'
-import { fetchClient, fetchClientPaymentSummary, fetchPayments } from '../../api/sales'
+import { fetchClient, fetchClientPaymentSummary, fetchPayments, disableClient as disableClientApi } from '../../api/sales'
 import { formatMoney } from '../../utils/money'
 import { escapeHtml, printHtmlDocument } from '../../utils/print'
+import { useConfirm } from '../../composables/useConfirm'
+import { useToast } from '../../composables/useToast'
 
 const props = defineProps({
   clientId: { type: [Number, String], default: null },
   clientName: { type: String, default: '' },
   buildingId: { type: [Number, String], default: null },
+  canDisable: { type: Boolean, default: false },
 })
+
+const emit = defineEmits(['disabled'])
+
+const { confirm } = useConfirm()
+const toast = useToast()
 
 const open = defineModel('open', { type: Boolean, default: false })
 const tab = defineModel('tab', { type: String, default: 'profile' })
 
 const loading = ref(false)
+const disabling = ref(false)
 const error = ref('')
 const client = ref(null)
 const summary = ref(null)
@@ -309,6 +333,28 @@ function onClose() {
   summary.value = null
   payments.value = []
   error.value = ''
+}
+
+async function disableClient() {
+  if (!client.value) return
+  const ok = await confirm({
+    title: 'Disable client',
+    message: `Disable ${client.value.name || props.clientName}? The unit will be marked available.`,
+    confirmLabel: 'Disable',
+    variant: 'danger',
+  })
+  if (!ok) return
+  disabling.value = true
+  try {
+    await disableClientApi(client.value.id)
+    toast.success('Client disabled.')
+    open.value = false
+    emit('disabled')
+  } catch (e) {
+    toast.error(e.response?.data?.message || 'Could not disable client.')
+  } finally {
+    disabling.value = false
+  }
 }
 
 watch(

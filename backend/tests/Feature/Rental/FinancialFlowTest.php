@@ -251,6 +251,34 @@ class FinancialFlowTest extends TestCase
         ]);
     }
 
+    public function test_water_bill_can_be_updated(): void
+    {
+        $user = $this->rentalUser();
+        $tenant = $this->activeTenant($user);
+
+        $created = $this->actingAs($user)->postJson('/api/v1/rental/water-bills', [
+            'tenant_id' => $tenant->id,
+            'rental_building_id' => $tenant->rental_building_id,
+            'billing_month' => 6,
+            'billing_year' => 2026,
+            'previous_reading' => 100,
+            'current_reading' => 150,
+            'rate' => 50,
+            'fixed_fee' => 200,
+        ])->assertCreated();
+
+        $billId = $created->json('data.id');
+
+        $this->actingAs($user)->putJson("/api/v1/rental/water-bills/{$billId}", [
+            'previous_reading' => 100,
+            'current_reading' => 160,
+            'rate' => 50,
+            'fixed_fee' => 200,
+        ])->assertOk()
+            ->assertJsonPath('data.consumption', 60)
+            ->assertJsonPath('data.amount', '3200.00');
+    }
+
     public function test_water_bill_posts_to_balance_after_batch_approval(): void
     {
         $user = $this->rentalUser();
@@ -754,5 +782,51 @@ class FinancialFlowTest extends TestCase
         $purposes = collect($response->json('data'))->pluck('purpose')->sort()->values()->all();
 
         $this->assertSame(['Electricity', 'Rent + service', 'Water'], $purposes);
+    }
+
+    public function test_generator_purpose_charges_are_included_in_tenant_balance(): void
+    {
+        $user = $this->rentalUser();
+        $tenant = $this->activeTenant($user);
+
+        RentCharge::query()->create([
+            'tenant_id' => $tenant->id,
+            'rental_unit_id' => $tenant->rental_unit_id,
+            'rental_building_id' => $tenant->rental_building_id,
+            'billing_month' => 7,
+            'billing_year' => 2025,
+            'rent_amount' => 70000,
+            'service_amount' => 10000,
+            'total_amount' => 80000,
+            'purpose' => 'Rent + service + generator',
+            'charged_at' => now(),
+        ]);
+
+        RentCharge::query()->create([
+            'tenant_id' => $tenant->id,
+            'rental_unit_id' => $tenant->rental_unit_id,
+            'rental_building_id' => $tenant->rental_building_id,
+            'billing_month' => 8,
+            'billing_year' => 2025,
+            'rent_amount' => 0,
+            'service_amount' => 0,
+            'total_amount' => 3500,
+            'purpose' => 'Water',
+            'charged_at' => now(),
+        ]);
+
+        RentPayment::query()->create([
+            'tenant_id' => $tenant->id,
+            'rental_building_id' => $tenant->rental_building_id,
+            'amount' => 83500,
+            'discount' => 0,
+            'paid_at' => now(),
+            'status' => RentPaymentStatus::Active,
+            'created_by' => $user->id,
+        ]);
+
+        $balance = app(TenantBalanceCalculator::class)->calculate($tenant);
+
+        $this->assertSame('0.00', $balance);
     }
 }

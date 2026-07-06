@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\Rental;
 
+use App\Enums\ElectricityBillStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Rental\StoreTenantElectricityBillRequest;
+use App\Http\Requests\Rental\UpdateTenantElectricityBillRequest;
 use App\Http\Resources\TenantElectricityBillResource;
 use App\Models\TenantElectricityBill;
 use App\Services\Rental\ElectricityBillService;
@@ -51,5 +53,26 @@ class TenantElectricityBillController extends Controller
         return (new TenantElectricityBillResource($bill))
             ->response()
             ->setStatusCode(201);
+    }
+
+    public function update(UpdateTenantElectricityBillRequest $request, TenantElectricityBill $electricityBill): TenantElectricityBillResource
+    {
+        $this->authorize('update', $electricityBill);
+
+        if ($electricityBill->status === ElectricityBillStatus::Paid) {
+            abort(422, 'Paid electricity bills cannot be edited.');
+        }
+
+        $bill = $this->electricityBillService->update($electricityBill, [
+            ...$request->validated(),
+            'tenant_id' => $electricityBill->tenant_id,
+            'billing_month' => $electricityBill->billing_month,
+            'billing_year' => $electricityBill->billing_year,
+            'fixed_fee' => $request->input('fixed_fee', 0),
+        ]);
+
+        $bill->load(['tenant', 'building', 'rentCharge']);
+
+        return new TenantElectricityBillResource($bill);
     }
 }

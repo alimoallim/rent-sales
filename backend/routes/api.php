@@ -85,6 +85,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('water-bills', [TenantWaterBillController::class, 'index']);
         Route::post('water-bills', [TenantWaterBillController::class, 'store']);
+        Route::put('water-bills/{waterBill}', [TenantWaterBillController::class, 'update']);
 
         Route::get('bulk-meter-readings', [BulkMeterReadingController::class, 'index']);
         Route::post('bulk-meter-readings', [BulkMeterReadingController::class, 'store']);
@@ -92,6 +93,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('electricity-bills', [TenantElectricityBillController::class, 'index']);
         Route::post('electricity-bills', [TenantElectricityBillController::class, 'store']);
+        Route::put('electricity-bills/{electricityBill}', [TenantElectricityBillController::class, 'update']);
 
         Route::get('utilities/nairobi-water', [BuildingUtilityController::class, 'nairobiWaterIndex']);
         Route::post('utilities/nairobi-water', [BuildingUtilityController::class, 'nairobiWaterStore']);
@@ -135,6 +137,7 @@ Route::prefix('v1')->group(function (): void {
             Route::get('income-statement', [SalesReportController::class, 'incomeStatement']);
             Route::get('cancelled-clients', [SalesReportController::class, 'cancelledClients']);
             Route::get('cancelled-payments', [SalesReportController::class, 'cancelledPayments']);
+            Route::get('payment-history', [SalesReportController::class, 'paymentHistory']);
         });
     });
 

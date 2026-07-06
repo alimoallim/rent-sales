@@ -70,6 +70,12 @@
       <template #actions="{ item }">
         <RowActionButton
           v-if="item.status === 'active'"
+          icon="print"
+          label="Print receipt"
+          @click="printReceipt(item)"
+        />
+        <RowActionButton
+          v-if="item.status === 'active'"
           icon="edit"
           label="Edit"
           @click="openEdit(item)"
@@ -109,7 +115,7 @@
               Tenant
               <TenantSearchSelect
                 v-model="form.tenant_id"
-                :tenants="activeTenants"
+                :building-id="form.rental_building_id"
                 required
                 @change="onTenantChange"
               />
@@ -220,12 +226,12 @@ import TenantNameMenu from '../../components/rental/TenantNameMenu.vue'
 import { useConfirm } from '../../composables/useConfirm'
 import { usePaginatedList } from '../../composables/usePaginatedList'
 import { useToast } from '../../composables/useToast'
+import { printRentalPaymentReceipt } from '../../utils/paymentReceipt'
 import {
   createPayment,
   fetchBuildings,
   fetchPayments,
   fetchTenantPaymentSummary,
-  fetchTenants,
   updatePayment,
   voidPayment,
 } from '../../api/rental'
@@ -237,7 +243,6 @@ const toast = useToast()
 
 const buildings = ref([])
 const saving = ref(false)
-const activeTenants = ref([])
 const showForm = ref(false)
 const editing = ref(null)
 const error = ref('')
@@ -294,15 +299,6 @@ async function loadBuildings() {
   buildings.value = response.data
 }
 
-async function loadTenants(buildingId) {
-  if (!buildingId) {
-    activeTenants.value = []
-    return
-  }
-  const response = await fetchTenants({ status: 'active', building_id: buildingId })
-  activeTenants.value = response.data
-}
-
 async function loadSummary() {
   if (!form.tenant_id) {
     summary.value = null
@@ -335,7 +331,6 @@ async function loadTable() {
 function onBuildingChange() {
   form.tenant_id = ''
   summary.value = null
-  loadTenants(form.rental_building_id)
 }
 
 function onTenantChange() {
@@ -368,11 +363,9 @@ function openCreate(prefill = {}) {
   error.value = ''
   summary.value = null
   showForm.value = true
-  loadTenants(form.rental_building_id).then(() => {
-    if (form.tenant_id) {
-      loadSummary()
-    }
-  })
+  if (form.tenant_id) {
+    loadSummary()
+  }
 }
 
 function openEdit(payment) {
@@ -388,7 +381,6 @@ function openEdit(payment) {
   error.value = ''
   summary.value = null
   showForm.value = true
-  loadTenants(form.rental_building_id)
   loadSummary()
 }
 
@@ -460,6 +452,10 @@ async function save() {
   } finally {
     saving.value = false
   }
+}
+
+function printReceipt(payment) {
+  printRentalPaymentReceipt(payment)
 }
 
 async function voidOne(payment) {

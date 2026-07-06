@@ -122,6 +122,21 @@ export async function fetchIncomeStatement(params = {}) {
   return data
 }
 
+export async function fetchCancelledClientsReport(params = {}) {
+  const { data } = await api.get('/api/v1/sales/reports/cancelled-clients', { params })
+  return data
+}
+
+export async function fetchCancelledPaymentsReport(params = {}) {
+  const { data } = await api.get('/api/v1/sales/reports/cancelled-payments', { params })
+  return data
+}
+
+export async function fetchPaymentHistoryReport(params = {}) {
+  const { data } = await api.get('/api/v1/sales/reports/payment-history', { params })
+  return data
+}
+
 export async function downloadSalesReportCsv(path, params = {}, filename = 'report.csv') {
   const response = await api.get(`/api/v1/sales/reports/${path}`, {
     params: { ...params, format: 'csv' },

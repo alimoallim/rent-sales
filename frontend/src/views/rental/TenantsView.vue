@@ -41,6 +41,18 @@
           hint="Matching current filters"
           accent="neutral"
         />
+        <KpiCard
+          label="With arrears"
+          :value="String(summary.with_balance ?? 0)"
+          hint="Former tenants still owing"
+          accent="warning"
+        />
+        <KpiCard
+          label="Outstanding"
+          :value="formatMoney(summary.total_outstanding ?? 0, 'rental')"
+          hint="Collectible arrears"
+          accent="danger"
+        />
       </template>
     </PageHeader>
 
@@ -73,6 +85,10 @@
       <label v-if="status === 'active'" class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
         <input v-model="filters.with_balance" type="checkbox" class="rounded border-zinc-300" @change="loadTable" />
         With balance only
+      </label>
+      <label v-else class="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+        <input v-model="filters.with_balance" type="checkbox" class="rounded border-zinc-300" @change="loadTable" />
+        With arrears only
       </label>
     </FilterBar>
 
@@ -147,14 +163,22 @@
       <template #cell-deposit="{ item }">
         <MoneyCell :amount="item.deposit" module="rental" />
       </template>
-      <template v-if="status === 'active'" #actions="{ item }">
+      <template #actions="{ item }">
+        <template v-if="status === 'active'">
+          <RowActionButton
+            icon="pay"
+            label="Pay"
+            :to="{ path: '/rental/payments', query: { tenant_id: item.id, building_id: item.rental_building_id, action: 'new' } }"
+          />
+          <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+          <RowActionButton icon="move-out" label="Move out" variant="danger" @click="openMoveOut(item)" />
+        </template>
         <RowActionButton
+          v-else-if="Number(item.balance ?? 0) > 0"
           icon="pay"
-          label="Pay"
+          label="Collect arrears"
           :to="{ path: '/rental/payments', query: { tenant_id: item.id, building_id: item.rental_building_id, action: 'new' } }"
         />
-        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
-        <RowActionButton icon="move-out" label="Move out" variant="danger" @click="openMoveOut(item)" />
       </template>
     </DataTable>
 
@@ -443,7 +467,10 @@ const tenantColumns = computed(() => {
     ]
   }
 
-  return base
+  return [
+    ...base,
+    { key: 'balance', label: 'Arrears', align: 'right', mobileCard: true },
+  ]
 })
 
 function balanceVariant(balance) {

@@ -32,6 +32,7 @@
               <th class="hidden px-3 py-2.5 text-right sm:table-cell sm:px-4">Discount</th>
               <th class="hidden px-3 py-2.5 sm:table-cell sm:px-4">Reference</th>
               <th class="px-3 py-2.5 text-right sm:px-4">Status</th>
+              <th class="px-3 py-2.5 text-right sm:px-4 print-hidden w-10" />
             </tr>
           </thead>
           <tbody>
@@ -57,6 +58,14 @@
                   :label="payment.status === 'voided' ? 'deleted' : payment.status"
                 />
               </td>
+              <td class="px-3 py-2.5 text-right sm:px-4">
+                <RowActionButton
+                  v-if="canPrintPaymentReceipt(payment, 'rental')"
+                  icon="print"
+                  label="Print receipt"
+                  @click="printReceipt(payment)"
+                />
+              </td>
             </tr>
           </tbody>
         </table>
@@ -72,11 +81,16 @@
 <script setup>
 import { computed } from 'vue'
 import StatusBadge from '../ui/StatusBadge.vue'
+import RowActionButton from '../ui/RowActionButton.vue'
 import { formatMoney } from '../../utils/money'
+import { canPrintPaymentReceipt, printRentalPaymentReceipt } from '../../utils/paymentReceipt'
 
 const props = defineProps({
   payments: { type: Array, default: () => [] },
   truncated: { type: Boolean, default: false },
+  tenantName: { type: String, default: '' },
+  buildingName: { type: String, default: '' },
+  unitLabel: { type: String, default: '' },
 })
 
 const activePayments = computed(() => props.payments.filter((p) => p.status === 'active'))
@@ -97,6 +111,14 @@ function formatDate(value) {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
+  })
+}
+
+function printReceipt(payment) {
+  printRentalPaymentReceipt(payment, {
+    tenantName: props.tenantName,
+    buildingName: props.buildingName,
+    unitLabel: props.unitLabel,
   })
 }
 </script>

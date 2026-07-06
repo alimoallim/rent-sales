@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Api\V1\Rental;
 
+use App\Enums\WaterBillStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Rental\StoreTenantWaterBillRequest;
+use App\Http\Requests\Rental\UpdateTenantWaterBillRequest;
 use App\Http\Resources\TenantWaterBillResource;
 use App\Models\TenantWaterBill;
 use App\Services\Rental\WaterBillService;
@@ -51,5 +53,26 @@ class TenantWaterBillController extends Controller
         return (new TenantWaterBillResource($bill))
             ->response()
             ->setStatusCode(201);
+    }
+
+    public function update(UpdateTenantWaterBillRequest $request, TenantWaterBill $waterBill): TenantWaterBillResource
+    {
+        $this->authorize('update', $waterBill);
+
+        if ($waterBill->status === WaterBillStatus::Paid) {
+            abort(422, 'Paid water bills cannot be edited.');
+        }
+
+        $bill = $this->waterBillService->update($waterBill, [
+            ...$request->validated(),
+            'tenant_id' => $waterBill->tenant_id,
+            'billing_month' => $waterBill->billing_month,
+            'billing_year' => $waterBill->billing_year,
+            'fixed_fee' => $request->input('fixed_fee', 0),
+        ]);
+
+        $bill->load(['tenant', 'building', 'rentCharge']);
+
+        return new TenantWaterBillResource($bill);
     }
 }

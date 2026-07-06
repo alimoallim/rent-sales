@@ -402,6 +402,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { valuesMatchSearch } from '../../utils/search'
 import { formatMoney, amountLabel } from '../../utils/money'
 import { useRoute } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
@@ -507,11 +508,11 @@ const filteredGroups = computed(() => {
     groups = groups.filter((g) => g.tenant_status === statusFilter.value)
   }
 
-  const query = search.value.trim().toLowerCase()
-  if (query) {
+  const query = search.value
+
+  if (String(query ?? '').trim()) {
     groups = groups.filter((g) =>
-      g.tenant_name?.toLowerCase().includes(query)
-      || g.unit_label?.toLowerCase().includes(query),
+      valuesMatchSearch([g.tenant_name, g.unit_label], query),
     )
   }
 

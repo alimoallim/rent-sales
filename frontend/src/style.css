@@ -87,6 +87,36 @@ body {
 
     .content-panel {
       box-shadow: none !important;
+      overflow: visible !important;
+    }
+
+    .page-header,
+    .filter-bar,
+    .data-table-toolbar {
+      display: none !important;
+    }
+
+    .data-list-cards {
+      display: none !important;
+    }
+
+    .table-shell {
+      display: block !important;
+      overflow: visible !important;
+      border: 1px solid #e4e4e7 !important;
+      box-shadow: none !important;
+    }
+
+    .table-scroll {
+      overflow: visible !important;
+    }
+
+    .data-grid {
+      page-break-inside: auto;
+    }
+
+    .data-grid-row {
+      page-break-inside: avoid;
     }
   }
 
@@ -548,6 +578,10 @@ body {
     @apply fixed inset-0 z-50 flex overflow-y-auto bg-zinc-900/50 p-0 backdrop-blur-[1px] transition-all duration-200 lg:items-start lg:justify-center lg:p-3 lg:py-6;
   }
 
+  .dialog-overlay-elevated {
+    z-index: 60;
+  }
+
   .dialog-overlay-fit {
     @apply lg:items-center lg:py-4;
   }
@@ -596,6 +630,30 @@ body {
 
   .filter-bar .input-field {
     @apply mt-0 w-full sm:w-auto sm:min-w-[9rem];
+  }
+
+  .date-range-filter {
+    @apply flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-end;
+  }
+
+  .date-range-field {
+    @apply flex min-w-0 flex-1 flex-col gap-1 sm:min-w-[9.5rem] sm:flex-none;
+  }
+
+  .date-range-label {
+    @apply text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400;
+  }
+
+  .date-range-input {
+    @apply mt-0 min-w-0;
+  }
+
+  .date-range-separator {
+    @apply hidden self-end pb-2.5 text-sm text-zinc-400 sm:inline;
+  }
+
+  .date-range-clear {
+    @apply inline-flex min-h-9 items-center justify-center rounded-lg px-2 text-xs font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200;
   }
 
   /* —— Alerts & banners —— */

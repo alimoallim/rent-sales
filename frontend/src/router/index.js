@@ -1,35 +1,36 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import LoginView from '../views/LoginView.vue'
-import AppLayout from '../layouts/AppLayout.vue'
-import RentalDashboard from '../views/rental/DashboardView.vue'
-import RentalBuildings from '../views/rental/BuildingsView.vue'
-import RentalUnits from '../views/rental/UnitsView.vue'
-import RentalTenants from '../views/rental/TenantsView.vue'
-import RentalChargeBatches from '../views/rental/ChargeBatchesView.vue'
-import RentalCharges from '../views/rental/ChargesView.vue'
-import RentalPayments from '../views/rental/PaymentsView.vue'
-import RentalWaterBills from '../views/rental/WaterBillsView.vue'
-import RentalElectricityBills from '../views/rental/ElectricityBillsView.vue'
-import RentalBulkMeterReadings from '../views/rental/BulkMeterReadingsView.vue'
-import RentalUtilities from '../views/rental/UtilitiesView.vue'
-import RentalReports from '../views/rental/ReportsView.vue'
-import RentalExpenses from '../views/rental/ExpensesView.vue'
-import RentalPayroll from '../views/rental/PayrollView.vue'
-import RentalShareholders from '../views/rental/ShareholdersView.vue'
-import SalesDashboard from '../views/sales/DashboardView.vue'
-import SalesBuildings from '../views/sales/BuildingsView.vue'
-import SalesUnits from '../views/sales/UnitsView.vue'
-import SalesClients from '../views/sales/ClientsView.vue'
-import SalesPayments from '../views/sales/PaymentsView.vue'
-import SalesExpenses from '../views/sales/ExpensesView.vue'
-import SalesReports from '../views/sales/ReportsView.vue'
-import AdminUsers from '../views/admin/UsersView.vue'
-import AdminActivityLog from '../views/admin/ActivityLogView.vue'
-import AdminRecycleBin from '../views/admin/RecycleBinView.vue'
-import SettingsView from '../views/SettingsView.vue'
-import ForgotPasswordView from '../views/ForgotPasswordView.vue'
-import ResetPasswordView from '../views/ResetPasswordView.vue'
+
+const LoginView = () => import('../views/LoginView.vue')
+const ForgotPasswordView = () => import('../views/ForgotPasswordView.vue')
+const ResetPasswordView = () => import('../views/ResetPasswordView.vue')
+const AppLayout = () => import('../layouts/AppLayout.vue')
+const RentalDashboard = () => import('../views/rental/DashboardView.vue')
+const RentalBuildings = () => import('../views/rental/BuildingsView.vue')
+const RentalUnits = () => import('../views/rental/UnitsView.vue')
+const RentalTenants = () => import('../views/rental/TenantsView.vue')
+const RentalChargeBatches = () => import('../views/rental/ChargeBatchesView.vue')
+const RentalCharges = () => import('../views/rental/ChargesView.vue')
+const RentalPayments = () => import('../views/rental/PaymentsView.vue')
+const RentalWaterBills = () => import('../views/rental/WaterBillsView.vue')
+const RentalElectricityBills = () => import('../views/rental/ElectricityBillsView.vue')
+const RentalBulkMeterReadings = () => import('../views/rental/BulkMeterReadingsView.vue')
+const RentalUtilities = () => import('../views/rental/UtilitiesView.vue')
+const RentalReports = () => import('../views/rental/ReportsView.vue')
+const RentalExpenses = () => import('../views/rental/ExpensesView.vue')
+const RentalPayroll = () => import('../views/rental/PayrollView.vue')
+const RentalShareholders = () => import('../views/rental/ShareholdersView.vue')
+const SalesDashboard = () => import('../views/sales/DashboardView.vue')
+const SalesBuildings = () => import('../views/sales/BuildingsView.vue')
+const SalesUnits = () => import('../views/sales/UnitsView.vue')
+const SalesClients = () => import('../views/sales/ClientsView.vue')
+const SalesPayments = () => import('../views/sales/PaymentsView.vue')
+const SalesExpenses = () => import('../views/sales/ExpensesView.vue')
+const SalesReports = () => import('../views/sales/ReportsView.vue')
+const AdminUsers = () => import('../views/admin/UsersView.vue')
+const AdminActivityLog = () => import('../views/admin/ActivityLogView.vue')
+const AdminRecycleBin = () => import('../views/admin/RecycleBinView.vue')
+const SettingsView = () => import('../views/SettingsView.vue')
 
 function canAccessModule(auth, module) {
   if (module === 'rental') return auth.canAccessRental

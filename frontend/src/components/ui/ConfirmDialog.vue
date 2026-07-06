@@ -3,6 +3,7 @@
     :open="state.open"
     :title="state.title"
     size="sm"
+    elevated
     :close-on-backdrop="false"
     @update:open="onDialogOpen"
   >

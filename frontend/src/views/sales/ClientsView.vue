@@ -101,6 +101,8 @@
           :client-id="item.id"
           :client-name="item.name"
           :building-id="item.sale_building_id"
+          :can-disable="status === 'active'"
+          @changed="onClientChanged"
         />
         <p v-if="item.phone" class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
           <a :href="`tel:${item.phone}`" class="hover:text-zinc-700 dark:hover:text-zinc-300">{{ item.phone }}</a>
@@ -112,6 +114,8 @@
             :client-id="item.id"
             :client-name="item.name"
             :building-id="item.sale_building_id"
+            :can-disable="status === 'active'"
+            @changed="onClientChanged"
           />
           <p v-if="item.voucher_number" class="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Ref {{ item.voucher_number }}</p>
         </div>
@@ -148,14 +152,16 @@
         </div>
         <span v-else class="text-zinc-400">—</span>
       </template>
-      <template v-if="status === 'active'" #actions="{ item }">
-        <RowActionButton
-          icon="pay"
-          label="Pay"
-          :to="{ path: '/sales/payments', query: { client_id: item.id, building_id: item.sale_building_id, action: 'new' } }"
-        />
-        <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
-        <RowActionButton icon="disable" label="Disable" variant="danger" @click="disableOne(item)" />
+      <template #actions="{ item }">
+        <template v-if="status === 'active'">
+          <RowActionButton
+            icon="pay"
+            label="Pay"
+            :to="{ path: '/sales/payments', query: { client_id: item.id, building_id: item.sale_building_id, action: 'new' } }"
+          />
+          <RowActionButton icon="edit" label="Edit" @click="openEdit(item)" />
+          <RowActionButton icon="disable" label="Disable" variant="danger" @click="disableOne(item)" />
+        </template>
       </template>
     </DataTable>
 
@@ -189,6 +195,9 @@
           </FormField>
           <FormField label="Phone" required>
             <input v-model="form.phone" type="tel" class="input-field" required />
+          </FormField>
+          <FormField label="Gender" required>
+            <GenderSelect v-model="form.gender" required placeholder="Select gender" />
           </FormField>
           <FormField label="Email">
             <input v-model="form.email" type="email" class="input-field" autocomplete="off" />
@@ -243,6 +252,15 @@
       </form>
       <p v-if="error" class="mt-3 alert-error">{{ error }}</p>
       <template #footer>
+        <button
+          v-if="editing && status === 'active'"
+          type="button"
+          class="btn-destructive mr-auto w-full sm:w-auto"
+          :disabled="saving"
+          @click="disableOne(editing)"
+        >
+          Disable client
+        </button>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
         <button type="submit" form="client-form" class="btn-primary w-full sm:w-auto" :disabled="saving">
           {{ saving ? 'Saving…' : 'Save' }}
@@ -260,6 +278,7 @@ import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import UnitSearchSelect from '../../components/ui/UnitSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import FormField from '../../components/ui/FormField.vue'
+import GenderSelect from '../../components/ui/GenderSelect.vue'
 import DocumentUploadPanel from '../../components/ui/DocumentUploadPanel.vue'
 import KpiCard from '../../components/ui/KpiCard.vue'
 import StatusBadge from '../../components/ui/StatusBadge.vue'
@@ -298,6 +317,7 @@ const form = reactive({
   sale_unit_id: '',
   name: '',
   phone: '',
+  gender: '',
   email: '',
   passport_or_id: '',
   agreed_sale_price: 0,
@@ -414,6 +434,7 @@ function openCreate() {
     sale_unit_id: '',
     name: '',
     phone: '',
+    gender: '',
     email: '',
     passport_or_id: '',
     agreed_sale_price: 0,
@@ -436,6 +457,7 @@ function openEdit(client) {
     sale_unit_id: client.sale_unit_id,
     name: client.name,
     phone: client.phone,
+    gender: client.gender || '',
     email: client.email || '',
     passport_or_id: client.passport_or_id || '',
     agreed_sale_price: client.agreed_sale_price,
@@ -482,21 +504,34 @@ async function save() {
 }
 
 async function disableOne(client) {
+  const fromEditForm = showForm.value && editing.value?.id === client.id
+  if (fromEditForm) {
+    closeForm()
+  }
   const ok = await confirm({
     title: 'Disable client',
     message: `Disable ${client.name}? The unit will be marked available.`,
     confirmLabel: 'Disable',
     variant: 'danger',
   })
-  if (!ok) return
+  if (!ok) {
+    if (fromEditForm) {
+      openEdit(client)
+    }
+    return
+  }
   try {
     await disableClient(client.id)
     toast.success('Client disabled.')
-    await loadUnits()
-    await reload()
+    await onClientChanged()
   } catch (e) {
     toast.error(e.response?.data?.message || 'Could not disable client.')
   }
+}
+
+async function onClientChanged() {
+  await loadUnits()
+  await reload()
 }
 
 onMounted(async () => {

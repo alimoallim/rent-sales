@@ -4,7 +4,6 @@ namespace App\Services\Sales;
 
 use App\Enums\ClientStatus;
 use App\Enums\SaleUnitStatus;
-use App\Enums\SalesPaymentStatus;
 use App\Models\Client;
 use App\Models\SaleUnit;
 use App\Models\User;
@@ -93,12 +92,6 @@ class ClientService
         if ($client->status !== ClientStatus::Active) {
             throw ValidationException::withMessages([
                 'client' => ['This client is already disabled.'],
-            ]);
-        }
-
-        if ($client->payments()->where('status', SalesPaymentStatus::Active)->exists()) {
-            throw ValidationException::withMessages([
-                'client' => ['Cannot disable a client with active payments. Cancel payments first.'],
             ]);
         }
 

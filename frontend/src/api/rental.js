@@ -168,6 +168,11 @@ export async function createWaterBill(payload) {
   return data.data
 }
 
+export async function updateWaterBill(id, payload) {
+  const { data } = await api.put(`/api/v1/rental/water-bills/${id}`, payload)
+  return data.data
+}
+
 export async function fetchMeterReadingContext(params) {
   const { data } = await api.get('/api/v1/rental/meter-readings/context', { params })
   return data.data
@@ -180,6 +185,11 @@ export async function fetchTenantElectricityBills(params = {}) {
 
 export async function createTenantElectricityBill(payload) {
   const { data } = await api.post('/api/v1/rental/electricity-bills', payload)
+  return data.data
+}
+
+export async function updateTenantElectricityBill(id, payload) {
+  const { data } = await api.put(`/api/v1/rental/electricity-bills/${id}`, payload)
   return data.data
 }
 
@@ -215,6 +225,11 @@ export async function fetchPaymentHistoryReport(params = {}) {
 
 export async function fetchChargeSummaryReport(params = {}) {
   const { data } = await api.get('/api/v1/rental/reports/charge-summary', { params })
+  return data
+}
+
+export async function fetchArrearsAgingReport(params = {}) {
+  const { data } = await api.get('/api/v1/rental/reports/arrears-aging', { params })
   return data
 }
 

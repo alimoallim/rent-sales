@@ -26,6 +26,7 @@
         <option value="tenant-balances">Tenant balances</option>
         <option value="payment-history">Payment history</option>
         <option value="charge-summary">Charge summary</option>
+        <option value="arrears-aging">Arrears aging</option>
         <option value="income-statement">Income statement</option>
       </select>
 
@@ -46,7 +47,7 @@
         </label>
       </template>
 
-      <template v-if="reportType === 'tenant-balances'">
+      <template v-if="reportType === 'tenant-balances' || reportType === 'arrears-aging'">
         <label class="flex min-h-11 items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
           <input v-model="filters.outstanding_only" type="checkbox" class="h-4 w-4 rounded border-zinc-300" @change="load" />
           Outstanding only
@@ -92,17 +93,45 @@
         />
       </template>
 
-      <DataTable
-        v-else
-        searchable
-        :items="tableRows"
-        :columns="tableColumns"
-        row-key="tenant_name"
-        money-module="rental"
-        empty-message="No data for selected filters."
-        :footer-label="tableTotals ? 'Totals' : ''"
-        :footer-value="tableTotals ? formatMoney(tableTotals, 'rental') : ''"
-      >
+      <template v-else>
+        <KpiStrip v-if="reportType === 'arrears-aging' && report?.totals" class="mb-4">
+          <KpiCard
+            label="Total outstanding"
+            :value="formatMoney(report.totals.total_balance, 'rental')"
+            accent="warning"
+          />
+          <KpiCard
+            label="Current (0–30 days)"
+            :value="formatMoney(report.totals.current, 'rental')"
+            accent="neutral"
+          />
+          <KpiCard
+            label="31–60 days"
+            :value="formatMoney(report.totals.days_31_60, 'rental')"
+            accent="warning"
+          />
+          <KpiCard
+            label="61–90 days"
+            :value="formatMoney(report.totals.days_61_90, 'rental')"
+            accent="danger"
+          />
+          <KpiCard
+            label="90+ days"
+            :value="formatMoney(report.totals.days_90_plus, 'rental')"
+            accent="danger"
+          />
+        </KpiStrip>
+
+        <DataTable
+          searchable
+          :items="tableRows"
+          :columns="tableColumns"
+          row-key="tenant_name"
+          money-module="rental"
+          empty-message="No data for selected filters."
+          :footer-label="tableTotals ? 'Totals' : ''"
+          :footer-value="tableTotals ? formatMoney(tableTotals, 'rental') : ''"
+        >
         <template #cell-paid_at="{ item }">
           <DateCell :value="item.paid_at" />
         </template>
@@ -130,10 +159,26 @@
         <template #cell-total_amount="{ item }">
           <MoneyCell :amount="item.total_amount" module="rental" />
         </template>
+        <template #cell-total_balance="{ item }">
+          <MoneyCell :amount="item.total_balance" module="rental" />
+        </template>
+        <template #cell-current="{ item }">
+          <MoneyCell :amount="item.current" module="rental" />
+        </template>
+        <template #cell-days_31_60="{ item }">
+          <MoneyCell :amount="item.days_31_60" module="rental" />
+        </template>
+        <template #cell-days_61_90="{ item }">
+          <MoneyCell :amount="item.days_61_90" module="rental" />
+        </template>
+        <template #cell-days_90_plus="{ item }">
+          <MoneyCell :amount="item.days_90_plus" module="rental" />
+        </template>
         <template #cell-rent_amount="{ item }">
           <MoneyCell :amount="item.rent_amount" module="rental" />
         </template>
       </DataTable>
+      </template>
     </div>
   </section>
 </template>
@@ -144,6 +189,8 @@ import PageHeader from '../../components/PageHeader.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
+import KpiCard from '../../components/ui/KpiCard.vue'
+import KpiStrip from '../../components/ui/KpiStrip.vue'
 import DataTable from '../../components/data/DataTable.vue'
 import DateCell from '../../components/data/DateCell.vue'
 import MoneyCell from '../../components/data/MoneyCell.vue'
@@ -152,6 +199,7 @@ import IncomeStatementReport from '../../components/rental/IncomeStatementReport
 import { useToast } from '../../composables/useToast'
 import {
   downloadReportCsv,
+  fetchArrearsAgingReport,
   fetchBuildings,
   fetchChargeSummaryReport,
   fetchIncomeStatementReport,
@@ -222,6 +270,18 @@ const columnSets = {
     { key: 'rent_amount', label: 'Rent', align: 'right', money: true, tabletCard: true },
     { key: 'service_amount', label: 'Service', align: 'right', money: true, tabletCard: true },
   ],
+  'arrears-aging': [
+    { key: 'tenant_name', label: 'Tenant', cardTitle: true },
+    { key: 'total_balance', label: 'Total', align: 'right', money: true, mobileCard: true },
+    { key: 'building_name', label: 'Building', mobileCard: true },
+    { key: 'unit_label', label: 'Unit', tabletCard: true },
+    { key: 'current', label: '0–30 days', align: 'right', money: true, tabletCard: true },
+    { key: 'days_31_60', label: '31–60', align: 'right', money: true, tabletCard: true },
+    { key: 'days_61_90', label: '61–90', align: 'right', money: true, tabletCard: true },
+    { key: 'days_90_plus', label: '90+', align: 'right', money: true, mobileCard: true },
+    { key: 'oldest_overdue_period', label: 'Oldest period', tabletCard: true },
+    { key: 'max_days_overdue', label: 'Max days', align: 'right', tabletCard: true },
+  ],
 }
 
 const tableColumns = computed(() => columnSets[reportType.value] || [])
@@ -245,6 +305,7 @@ const tableTotals = computed(() => {
   if (reportType.value === 'tenant-balances') return report.value.totals.balance
   if (reportType.value === 'payment-history') return report.value.totals.amount
   if (reportType.value === 'charge-summary') return report.value.totals.total_amount
+  if (reportType.value === 'arrears-aging') return report.value.totals.total_balance
   return null
 })
 
@@ -257,6 +318,9 @@ function buildParams() {
     if (filters.include_voided) params.include_voided = 1
   }
   if (reportType.value === 'tenant-balances' && filters.outstanding_only) {
+    params.outstanding_only = 1
+  }
+  if (reportType.value === 'arrears-aging' && filters.outstanding_only) {
     params.outstanding_only = 1
   }
   if (reportType.value === 'charge-summary' || reportType.value === 'income-statement') {
@@ -289,6 +353,8 @@ async function load() {
       report.value = await fetchTenantBalancesReport(buildParams())
     } else if (reportType.value === 'payment-history') {
       report.value = await fetchPaymentHistoryReport(buildParams())
+    } else if (reportType.value === 'arrears-aging') {
+      report.value = await fetchArrearsAgingReport(buildParams())
     } else {
       report.value = await fetchChargeSummaryReport(buildParams())
     }

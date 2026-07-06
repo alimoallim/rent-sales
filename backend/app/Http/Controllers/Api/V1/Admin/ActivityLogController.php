@@ -19,12 +19,12 @@ class ActivityLogController extends Controller
             ->with('user:id,name')
             ->when($request->string('action')->toString(), fn ($q, $action) => $q->where('action', $action))
             ->when($request->string('subject_type')->toString(), function ($q, $type) {
-                $q->where('subject_type', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $type));
+                $pattern = str_replace(['%', '_'], '', mb_strtolower($type, 'UTF-8')).'%';
+                $q->where('subject_type', 'ilike', $pattern);
             })
-            ->when($request->integer('user_id'), fn ($q, $userId) => $q->where('user_id', $userId))
             ->when($request->string('search')->toString(), function ($q, $search) {
-                $pattern = '%'.str_replace(['%', '_'], ['\%', '\_'], strtolower($search)).'%';
-                $q->whereRaw('LOWER(subject_label) LIKE ?', [$pattern]);
+                $pattern = str_replace(['%', '_'], '', mb_strtolower($search, 'UTF-8')).'%';
+                $q->where('subject_label', 'ilike', $pattern);
             });
 
         $logs = $query

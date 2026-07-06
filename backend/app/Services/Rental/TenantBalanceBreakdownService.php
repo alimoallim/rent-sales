@@ -12,9 +12,20 @@ class TenantBalanceBreakdownService
 {
     public const PURPOSE_RENT_SERVICE = 'Rent + service';
 
+    public const PURPOSE_RENT_SERVICE_GENERATOR = 'Rent + service + generator';
+
     public const PURPOSE_WATER = 'Water';
 
     public const PURPOSE_ELECTRICITY = 'Electricity';
+
+    /** @return list<string> */
+    public static function rentServicePurposes(): array
+    {
+        return [
+            self::PURPOSE_RENT_SERVICE,
+            self::PURPOSE_RENT_SERVICE_GENERATOR,
+        ];
+    }
 
     /**
      * Outstanding balances by category, using payment allocation order:
@@ -97,7 +108,7 @@ class TenantBalanceBreakdownService
     {
         return (string) RentCharge::query()
             ->where('tenant_id', $tenantId)
-            ->where('purpose', self::PURPOSE_RENT_SERVICE)
+            ->whereIn('purpose', self::rentServicePurposes())
             ->sum('service_amount');
     }
 
@@ -105,7 +116,7 @@ class TenantBalanceBreakdownService
     {
         return (string) RentCharge::query()
             ->where('tenant_id', $tenantId)
-            ->where('purpose', self::PURPOSE_RENT_SERVICE)
+            ->whereIn('purpose', self::rentServicePurposes())
             ->sum('rent_amount');
     }
 

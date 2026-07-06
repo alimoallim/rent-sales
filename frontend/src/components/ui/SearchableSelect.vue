@@ -47,7 +47,8 @@
         class="searchable-select-panel searchable-select-panel-teleport"
         :style="panelStyle"
       >
-        <p v-if="filteredOptions.length === 0" class="searchable-select-empty">No matches found</p>
+        <p v-if="loading" class="searchable-select-empty">Searching…</p>
+        <p v-else-if="filteredOptions.length === 0" class="searchable-select-empty">No matches found</p>
         <ul
           v-else
           :id="listboxId"
@@ -76,6 +77,7 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { valuesMatchSearch } from '../../utils/search'
 
 const props = defineProps({
   modelValue: { type: [String, Number], default: '' },
@@ -85,9 +87,11 @@ const props = defineProps({
   disabled: { type: Boolean, default: false },
   required: { type: Boolean, default: false },
   clearable: { type: Boolean, default: false },
+  remoteSearch: { type: Boolean, default: false },
+  loading: { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:modelValue', 'change'])
+const emit = defineEmits(['update:modelValue', 'change', 'search-query'])
 
 const root = ref(null)
 const controlRef = ref(null)
@@ -98,6 +102,16 @@ const query = ref('')
 const highlightedIndex = ref(0)
 const panelStyle = ref({})
 const listboxId = `searchable-select-${Math.random().toString(36).slice(2, 9)}`
+let searchEmitTimer = null
+
+function emitSearchQuery() {
+  if (!props.remoteSearch) return
+
+  clearTimeout(searchEmitTimer)
+  searchEmitTimer = setTimeout(() => {
+    emit('search-query', query.value.trim())
+  }, 300)
+}
 
 const selectedOption = computed(() =>
   props.options.find((option) => valuesMatch(option.value, props.modelValue)) ?? null,
@@ -106,16 +120,14 @@ const selectedOption = computed(() =>
 const hasValue = computed(() => props.modelValue !== '' && props.modelValue !== null && props.modelValue !== undefined)
 
 const filteredOptions = computed(() => {
-  const term = query.value.trim().toLowerCase()
-  if (!term) return props.options
+  if (props.remoteSearch) return props.options
 
-  return props.options.filter((option) => {
-    const haystack = [option.label, option.hint, option.keywords]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase()
-    return haystack.includes(term)
-  })
+  const term = query.value
+  if (!String(term ?? '').trim()) return props.options
+
+  return props.options.filter((option) =>
+    valuesMatchSearch([option.label, option.hint, option.keywords], term),
+  )
 })
 
 const inputValue = computed(() => {
@@ -211,6 +223,9 @@ function openDropdown() {
     0,
     filteredOptions.value.findIndex((option) => isSelected(option)),
   )
+  if (props.remoteSearch) {
+    emit('search-query', '')
+  }
 }
 
 function closeDropdown() {
@@ -233,6 +248,7 @@ function onInput(event) {
   query.value = event.target.value
   open.value = true
   highlightedIndex.value = 0
+  emitSearchQuery()
   nextTick(updatePanelPosition)
 }
 
@@ -296,5 +312,6 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('click', onDocumentClick)
   unbindPositionListeners()
+  clearTimeout(searchEmitTimer)
 })
 </script>

@@ -39,6 +39,12 @@
         placeholder="All buildings"
         @change="loadTable"
       />
+      <DateRangeFilter
+        v-if="tab === 'bills'"
+        v-model:from="filters.from"
+        v-model:to="filters.to"
+        @change="loadTable"
+      />
     </FilterBar>
 
     <DataTable
@@ -146,6 +152,7 @@ import AppDialog from '../../components/ui/AppDialog.vue'
 import ShareholderSearchSelect from '../../components/ui/ShareholderSearchSelect.vue'
 import BuildingSearchSelect from '../../components/ui/BuildingSearchSelect.vue'
 import FilterBar from '../../components/ui/FilterBar.vue'
+import DateRangeFilter from '../../components/ui/DateRangeFilter.vue'
 import FormField from '../../components/ui/FormField.vue'
 import DataTable from '../../components/data/DataTable.vue'
 import RowActionButton from '../../components/ui/RowActionButton.vue'
@@ -176,7 +183,7 @@ const tab = ref('shareholders')
 const showForm = ref(false)
 const editingShareholder = ref(null)
 const error = ref('')
-const filters = reactive({ building_id: '' })
+const filters = reactive({ building_id: '', from: '', to: '' })
 
 const {
   items: shareholderItems,
@@ -204,6 +211,8 @@ const {
   fetchShareholderBills({
     ...params,
     building_id: filters.building_id || undefined,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
   }),
 )
 

@@ -21,6 +21,8 @@ class SalesReportFilterRequest extends FormRequest
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
             'outstanding_only' => ['nullable', 'boolean'],
+            'client_id' => ['nullable', 'integer', 'exists:clients,id'],
+            'include_cancelled' => ['nullable', 'boolean'],
             'format' => ['nullable', 'in:json,csv'],
         ];
     }

@@ -94,7 +94,7 @@ php artisan legacy:import storage/legacy/rasulmar_db.sql \
 | `--fresh` | Truncate domain tables (tenants, charges, payments, etc.) |
 | `--force` | Skip confirmation prompt |
 | `--skip-sales` | Rental module only |
-| `--skip-users` | Keep current greenfield logins; map legacy `created_by` by username |
+| `--skip-users` | Keep current greenfield logins; map legacy `created_by` by username. If no usernames match (e.g. dump has only `BILE`), attribution falls back to the first manager account. |
 
 To **import legacy users and passwords** (staff log in with old passwords):
 
@@ -127,6 +127,40 @@ php artisan legacy:import storage/legacy/rasulmar_db.sql --fresh --force --skip-
 - [ ] Sample tenant payment history matches legacy
 - [ ] Water bills and charges present for metered tenants
 - [ ] Staff can log in (legacy users or greenfield users)
+
+### 8. Automated validation (recommended)
+
+After import, compare the database against the same SQL dump:
+
+```bash
+php artisan legacy:validate storage/legacy/rasulmar_db.sql
+```
+
+Optional flags:
+
+| Flag | Purpose |
+|------|---------|
+| `--samples=5` | Spot-check 5 tenants/clients with the most activity (default) |
+| `--samples=0` | Check every tenant and client in the dump |
+| `--tenant=10` | Validate one legacy tenant `ClientID` |
+| `--client=39` | Validate one legacy client `ClientID` |
+| `--tolerance=0.01` | Allowed monetary rounding difference |
+
+The command checks:
+
+1. **Entity counts** — buildings, units, tenants, payments, clients (partial OK for orphaned charge/water rows)
+2. **Tenant financial totals** — legacy `charge` + `water_bill` amounts vs imported `rent_charges`; payment amounts vs `rent_payments`
+3. **Client financial totals** — agreed price, deposit, and `cpayments` vs imported sales data
+
+**Local full-data test dump** (used in CI/tests):
+
+```bash
+php artisan legacy:inspect /home/ali/legacy-app/rasulmar_karama.sql
+php artisan legacy:import /home/ali/legacy-app/rasulmar_karama.sql --fresh --force --skip-users
+php artisan legacy:validate /home/ali/legacy-app/rasulmar_karama.sql
+```
+
+**Production dump check:** `rasulmar_db.sql` in the legacy repo is structure-only (no tenant/charge rows). Re-export from phpMyAdmin with INSERT data before production import.
 
 ---
 

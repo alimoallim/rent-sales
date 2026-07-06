@@ -119,7 +119,7 @@ class RentalOperationsTest extends TestCase
             'rental_unit_id' => $unit->id,
             'name' => 'Jane Doe',
             'phone' => '0700000000',
-            'deposit' => 0,
+            'deposit' => 25000,
             'service_amount' => 10000,
             'status' => TenantStatus::Active,
             'created_by' => $user->id,
@@ -190,6 +190,7 @@ class RentalOperationsTest extends TestCase
             ->assertJsonPath('lines.expenses', '5000.00')
             ->assertJsonPath('lines.payroll', '8000.00')
             ->assertJsonPath('lines.shareholder_deductions', '3000.00')
-            ->assertJsonPath('lines.rent_net', '37000.00');
+            ->assertJsonPath('lines.rent_net', '37000.00')
+            ->assertJsonPath('deposit_total', '25000.00');
     }
 }
