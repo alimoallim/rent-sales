@@ -8,6 +8,7 @@ use App\Http\Requests\Rental\StoreRentPaymentRequest;
 use App\Http\Requests\Rental\UpdateRentPaymentRequest;
 use App\Http\Resources\RentPaymentResource;
 use App\Models\RentPayment;
+use App\Services\Rental\RentPaymentService;
 use App\Support\ListQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class RentPaymentController extends Controller
 {
+    public function __construct(
+        private readonly RentPaymentService $rentPaymentService,
+    ) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', RentPayment::class);
@@ -38,14 +43,7 @@ class RentPaymentController extends Controller
     {
         $this->authorize('create', RentPayment::class);
 
-        $payment = RentPayment::query()->create([
-            ...$request->validated(),
-            'discount' => $request->input('discount', 0),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $request->user()->id,
-        ]);
-
-        $payment->load(['tenant', 'building']);
+        $payment = $this->rentPaymentService->store($request->validated(), $request->user());
 
         return new RentPaymentResource($payment);
     }
@@ -58,11 +56,11 @@ class RentPaymentController extends Controller
             abort(422, 'Voided payments cannot be edited.');
         }
 
-        $rentPayment->update([
+        $rentPayment->fill([
             ...$request->validated(),
             'discount' => $request->input('discount', 0),
-            'updated_by' => $request->user()->id,
         ]);
+        $rentPayment->forceFill(['updated_by' => $request->user()->id])->save();
 
         $rentPayment->load(['tenant', 'building']);
 
@@ -71,18 +69,18 @@ class RentPaymentController extends Controller
 
     public function void(Request $request, RentPayment $rentPayment): RentPaymentResource
     {
-        $this->authorize('update', $rentPayment);
+        $this->authorize('void', $rentPayment);
 
         if ($rentPayment->status === RentPaymentStatus::Voided) {
             abort(422, 'Payment is already voided.');
         }
 
-        $rentPayment->update([
+        $rentPayment->forceFill([
             'status' => RentPaymentStatus::Voided,
             'voided_at' => now(),
             'voided_by' => $request->user()->id,
             'updated_by' => $request->user()->id,
-        ]);
+        ])->save();
 
         $rentPayment->load(['tenant', 'building']);
 

@@ -137,11 +137,13 @@ class ClientController extends Controller
         return new ClientResource($client);
     }
 
-    public function paymentSummary(Client $client): ClientPaymentSummaryResource
+    public function paymentSummary(Request $request, Client $client): ClientPaymentSummaryResource
     {
         $this->authorize('view', $client);
 
-        return new ClientPaymentSummaryResource($this->balanceCalculator->summary($client));
+        $excludePaymentId = $request->integer('exclude_payment_id') ?: null;
+
+        return new ClientPaymentSummaryResource($this->balanceCalculator->summary($client, $excludePaymentId));
     }
 
     public function update(UpdateClientRequest $request, Client $client): ClientResource

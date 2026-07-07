@@ -662,7 +662,7 @@ body {
   }
 
   .alert-warning {
-    @apply rounded-md border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-950;
+    @apply rounded-md border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/40 px-3 py-2 text-sm text-amber-950 dark:text-amber-200;
   }
 
   .alert-success {
@@ -761,27 +761,27 @@ body {
   }
 
   .dashboard-metric {
-    @apply rounded-xl border bg-white dark:bg-zinc-900 p-4 shadow-sm transition-all duration-200;
+    @apply rounded-xl border p-4 shadow-sm transition-all duration-200;
   }
 
   .dashboard-metric-link {
-    @apply hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2;
+    @apply hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-zinc-950;
   }
 
   .dashboard-metric-neutral {
-    @apply border-zinc-200 dark:border-zinc-700;
+    @apply border-zinc-200/90 bg-gradient-to-br from-zinc-50 to-zinc-100/90 dark:border-zinc-600/80 dark:from-zinc-800/90 dark:to-zinc-900/90;
   }
 
   .dashboard-metric-warning {
-    @apply border-amber-200/80 bg-gradient-to-br from-white dark:from-zinc-900 to-amber-50/50 dark:to-amber-950/40;
+    @apply border-amber-200 bg-gradient-to-br from-amber-50 to-amber-100/70 dark:border-amber-800/70 dark:from-amber-950/70 dark:to-amber-900/40;
   }
 
   .dashboard-metric-success {
-    @apply border-emerald-200/80 bg-gradient-to-br from-white dark:from-zinc-900 to-emerald-50/50 dark:to-emerald-950/40;
+    @apply border-emerald-200 bg-gradient-to-br from-emerald-50 to-emerald-100/70 dark:border-emerald-800/70 dark:from-emerald-950/70 dark:to-emerald-900/40;
   }
 
   .dashboard-metric-info {
-    @apply border-sky-200/80 bg-gradient-to-br from-white dark:from-zinc-900 to-sky-50/50 dark:to-sky-950/40;
+    @apply border-sky-200 bg-gradient-to-br from-sky-50 to-sky-100/70 dark:border-sky-800/70 dark:from-sky-950/70 dark:to-sky-900/40;
   }
 
   .dashboard-metric-label {
@@ -856,20 +856,44 @@ body {
     @apply mt-5 grid grid-cols-3 gap-3 border-t border-zinc-100 dark:border-zinc-800 pt-4;
   }
 
+  .dashboard-stat-chip {
+    @apply rounded-lg border px-3 py-2.5;
+  }
+
+  .dashboard-stat-chip-success {
+    @apply border-emerald-200/80 bg-emerald-50/90 dark:border-emerald-900/60 dark:bg-emerald-950/50;
+  }
+
+  .dashboard-stat-chip-info {
+    @apply border-sky-200/80 bg-sky-50/90 dark:border-sky-900/60 dark:bg-sky-950/50;
+  }
+
+  .dashboard-stat-chip-warning {
+    @apply border-amber-200/80 bg-amber-50/90 dark:border-amber-900/60 dark:bg-amber-950/50;
+  }
+
   .dashboard-collections {
     @apply grid gap-3 sm:grid-cols-2;
   }
 
   .dashboard-collections-card {
-    @apply rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 p-4;
+    @apply rounded-lg border p-4;
+  }
+
+  .dashboard-collections-card-success {
+    @apply border-emerald-200/80 bg-gradient-to-br from-emerald-50 to-emerald-100/60 dark:border-emerald-900/60 dark:from-emerald-950/60 dark:to-emerald-900/30;
+  }
+
+  .dashboard-collections-card-info {
+    @apply border-sky-200/80 bg-gradient-to-br from-sky-50 to-sky-100/60 dark:border-sky-900/60 dark:from-sky-950/60 dark:to-sky-900/30;
   }
 
   .dashboard-collections-card-muted {
-    @apply bg-white dark:bg-zinc-900;
+    @apply border-zinc-200/90 bg-gradient-to-br from-zinc-50 to-zinc-100/80 dark:border-zinc-700/80 dark:from-zinc-800/80 dark:to-zinc-900/80;
   }
 
   .dashboard-charges-summary {
-    @apply mt-4 rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/50 p-4;
+    @apply mt-4 rounded-lg border border-dashed border-indigo-200/80 bg-indigo-50/50 p-4 dark:border-indigo-900/50 dark:bg-indigo-950/30;
   }
 
   .dashboard-list {
@@ -1062,7 +1086,7 @@ body {
   }
 
   .sales-dashboard-metric-accent {
-    @apply border-violet-200/80 dark:border-violet-800/80 bg-gradient-to-br from-white dark:from-zinc-900 to-violet-50/60 dark:to-violet-950/40;
+    @apply border-violet-200 dark:border-violet-800/70 bg-gradient-to-br from-violet-50 to-violet-100/70 dark:from-violet-950/70 dark:to-violet-900/40;
   }
 
   .sales-dashboard-progress-list {

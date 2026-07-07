@@ -108,4 +108,50 @@ class UserManagementTest extends TestCase
 
         $this->assertTrue(Hash::check('N3w!Passw0rd', $user->fresh()->password));
     }
+
+    public function test_admin_can_reuse_username_after_soft_delete(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $retired = User::factory()->rental()->create([
+            'username' => 'retired_staff',
+            'email' => 'retired@example.com',
+        ]);
+
+        $this->actingAs($admin)
+            ->deleteJson("/api/v1/admin/users/{$retired->id}")
+            ->assertOk();
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/admin/users', [
+                'name' => 'Replacement Staff',
+                'username' => 'retired_staff',
+                'email' => 'new.hire@example.com',
+                'password' => 'Str0ng!Pass',
+                'password_confirmation' => 'Str0ng!Pass',
+                'role' => UserRole::Rental->value,
+                'status' => UserStatus::Active->value,
+            ])
+            ->assertCreated()
+            ->assertJsonPath('data.username', 'retired_staff');
+
+        $this->assertSame(1, User::query()->where('username', 'retired_staff')->count());
+        $this->assertSame(2, User::withTrashed()->where('username', 'retired_staff')->count());
+    }
+
+    public function test_admin_cannot_create_duplicate_active_username(): void
+    {
+        $admin = User::factory()->admin()->create();
+        User::factory()->rental()->create(['username' => 'taken.user']);
+
+        $this->actingAs($admin)
+            ->postJson('/api/v1/admin/users', [
+                'name' => 'Duplicate User',
+                'username' => 'taken.user',
+                'password' => 'Str0ng!Pass',
+                'password_confirmation' => 'Str0ng!Pass',
+                'role' => UserRole::Rental->value,
+            ])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['username']);
+    }
 }

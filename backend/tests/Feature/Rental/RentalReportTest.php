@@ -60,15 +60,13 @@ class RentalReportTest extends TestCase
             'charged_at' => now(),
         ]);
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $building->id,
             'amount' => 50000,
             'discount' => 5000,
             'paid_at' => '2026-06-15',
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         TenantWaterBill::query()->create([
             'tenant_id' => $tenant->id,
@@ -159,15 +157,13 @@ class RentalReportTest extends TestCase
         $user = $this->rentalUser();
         $data = $this->seedTenantWithFinancials($user);
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $data['tenant']->id,
             'rental_building_id' => $data['building']->id,
             'amount' => 25000,
             'discount' => 0,
             'paid_at' => '2026-06-20',
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $this->actingAs($user)->getJson('/api/v1/rental/reports/income-statement?'.http_build_query([
             'building_id' => $data['building']->id,

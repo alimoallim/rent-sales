@@ -122,17 +122,18 @@ class SalesReportTest extends TestCase
             'registration_date' => '2024-08-01',
         ]);
 
-        SalesPayment::query()->create([
+        $cancelledPayment = SalesPayment::createActive([
             'client_id' => $client->id,
             'sale_building_id' => $building->id,
             'amount' => '5000.00',
             'discount' => '0.00',
             'paid_at' => '2024-09-01',
+        ], $this->user->id);
+        $cancelledPayment->forceFill([
             'status' => SalesPaymentStatus::Cancelled,
             'cancelled_at' => now(),
             'cancelled_by' => $this->user->id,
-            'created_by' => $this->user->id,
-        ]);
+        ])->save();
 
         $response = $this->actingAs($this->user)->getJson('/api/v1/sales/reports/cancelled-payments');
 
@@ -164,15 +165,13 @@ class SalesReportTest extends TestCase
             'registration_date' => '2024-05-01',
         ]);
 
-        SalesPayment::query()->create([
+        SalesPayment::createActive([
             'client_id' => $client->id,
             'sale_building_id' => $building->id,
             'amount' => '5000.00',
             'discount' => '0.00',
             'paid_at' => '2024-06-15',
-            'status' => SalesPaymentStatus::Active,
-            'created_by' => $this->user->id,
-        ]);
+        ], $this->user->id);
 
         $response = $this->actingAs($this->user)->getJson('/api/v1/sales/reports/payment-history?from=2024-06-01&to=2024-06-30');
 

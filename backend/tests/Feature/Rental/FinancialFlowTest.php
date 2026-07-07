@@ -118,15 +118,13 @@ class FinancialFlowTest extends TestCase
             'charged_at' => now(),
         ]);
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $tenant->rental_building_id,
             'amount' => 50000,
             'discount' => 5000,
             'paid_at' => now(),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $balance = app(TenantBalanceCalculator::class)->calculate($tenant);
 
@@ -151,15 +149,13 @@ class FinancialFlowTest extends TestCase
             'charged_at' => now(),
         ]);
 
-        $payment = RentPayment::query()->create([
+        $payment = RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $tenant->rental_building_id,
             'amount' => 50000,
             'discount' => 0,
             'paid_at' => now(),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $this->actingAs($user)->postJson("/api/v1/rental/payments/{$payment->id}/void")
             ->assertOk()
@@ -437,15 +433,13 @@ class FinancialFlowTest extends TestCase
             '2700.00',
         );
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $tenant->rental_building_id,
             'amount' => 15000,
             'discount' => 0,
             'paid_at' => now(),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $breakdown = app(TenantBalanceBreakdownService::class)->breakdown($tenant);
 
@@ -703,15 +697,13 @@ class FinancialFlowTest extends TestCase
         $this->postWaterChargeForTenant($tenant, 6, 2026, (int) $waterBill->json('data.id'), '2700.00');
         $this->postElectricityChargeForTenant($tenant, 6, 2026, (int) $electricityBill->json('data.id'), '1000.00');
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $tenant->rental_building_id,
             'amount' => 5000,
             'discount' => 0,
             'paid_at' => now(),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $breakdown = app(TenantBalanceBreakdownService::class)->breakdown($tenant);
 
@@ -815,15 +807,13 @@ class FinancialFlowTest extends TestCase
             'charged_at' => now(),
         ]);
 
-        RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $tenant->rental_building_id,
             'amount' => 83500,
             'discount' => 0,
             'paid_at' => now(),
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         $balance = app(TenantBalanceCalculator::class)->calculate($tenant);
 

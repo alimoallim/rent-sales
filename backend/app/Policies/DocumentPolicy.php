@@ -2,9 +2,7 @@
 
 namespace App\Policies;
 
-use App\Models\Client;
 use App\Models\Document;
-use App\Models\Tenant;
 use App\Models\User;
 
 class DocumentPolicy
@@ -23,14 +21,10 @@ class DocumentPolicy
     {
         $parent = $document->documentable;
 
-        if ($parent instanceof Tenant) {
-            return $user->canAccessRental();
+        if ($parent === null) {
+            return false;
         }
 
-        if ($parent instanceof Client) {
-            return $user->canAccessSales();
-        }
-
-        return false;
+        return $user->can('view', $parent);
     }
 }

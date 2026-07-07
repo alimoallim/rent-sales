@@ -8,12 +8,17 @@ use App\Http\Requests\Sales\StoreSalesPaymentRequest;
 use App\Http\Requests\Sales\UpdateSalesPaymentRequest;
 use App\Http\Resources\SalesPaymentResource;
 use App\Models\SalesPayment;
+use App\Services\Sales\SalesPaymentService;
 use App\Support\ListQuery;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class SalesPaymentController extends Controller
 {
+    public function __construct(
+        private readonly SalesPaymentService $salesPaymentService,
+    ) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $this->authorize('viewAny', SalesPayment::class);
@@ -39,14 +44,7 @@ class SalesPaymentController extends Controller
     {
         $this->authorize('create', SalesPayment::class);
 
-        $payment = SalesPayment::query()->create([
-            ...$request->validated(),
-            'discount' => $request->input('discount', 0),
-            'status' => SalesPaymentStatus::Active,
-            'created_by' => $request->user()->id,
-        ]);
-
-        $payment->load(['client.unit', 'building']);
+        $payment = $this->salesPaymentService->store($request->validated(), $request->user());
 
         return new SalesPaymentResource($payment);
     }
@@ -59,11 +57,11 @@ class SalesPaymentController extends Controller
             abort(422, 'Cancelled payments cannot be edited.');
         }
 
-        $payment->update([
+        $payment->fill([
             ...$request->validated(),
             'discount' => $request->input('discount', 0),
-            'updated_by' => $request->user()->id,
         ]);
+        $payment->forceFill(['updated_by' => $request->user()->id])->save();
 
         $payment->load(['client.unit', 'building']);
 
@@ -72,18 +70,18 @@ class SalesPaymentController extends Controller
 
     public function cancel(Request $request, SalesPayment $payment): SalesPaymentResource
     {
-        $this->authorize('update', $payment);
+        $this->authorize('cancel', $payment);
 
         if ($payment->status === SalesPaymentStatus::Cancelled) {
             abort(422, 'Payment is already cancelled.');
         }
 
-        $payment->update([
+        $payment->forceFill([
             'status' => SalesPaymentStatus::Cancelled,
             'cancelled_at' => now(),
             'cancelled_by' => $request->user()->id,
             'updated_by' => $request->user()->id,
-        ]);
+        ])->save();
 
         $payment->load(['client.unit', 'building']);
 

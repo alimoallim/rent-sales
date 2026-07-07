@@ -14,6 +14,7 @@ use App\Models\RentPayment;
 use App\Models\Tenant;
 use App\Models\TenantMoveOut;
 use App\Support\MoneyConfig;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 
 class RentalDashboardService
@@ -39,9 +40,10 @@ class RentalDashboardService
         $totalUnits = RentalUnit::query()->count();
         $occupiedUnits = RentalUnit::query()->where('status', RentalUnitStatus::Occupied)->count();
         $vacantUnits = RentalUnit::query()->where('status', RentalUnitStatus::Vacant)->count();
-        $activeTenants = Tenant::query()->where('status', TenantStatus::Active)->count();
+        $activeTenants = $this->activeTenants();
+        $breakdowns = $this->breakdownService->breakdownsForTenants($activeTenants->pluck('id')->all());
 
-        $outstanding = $this->aggregateOutstanding();
+        $outstanding = $this->aggregateOutstandingFromBreakdowns($breakdowns);
         $collections = $this->aggregateCollections($currentMonthStart, $currentMonthEnd, $previousMonthStart, $previousMonthEnd);
 
         return [
@@ -58,7 +60,7 @@ class RentalDashboardService
                 'occupied_units' => $occupiedUnits,
                 'vacant_units' => $vacantUnits,
                 'occupancy_rate' => $this->occupancyRate($occupiedUnits, $totalUnits),
-                'active_tenants' => $activeTenants,
+                'active_tenants' => $activeTenants->count(),
             ],
             'collections' => $collections,
             'outstanding' => $outstanding,
@@ -85,10 +87,10 @@ class RentalDashboardService
                     ->where('billing_year', $now->year)
                     ->count(),
             ],
-            'top_debtors' => $this->topDebtors(),
+            'top_debtors' => $this->topDebtorsFromBreakdowns($activeTenants, $breakdowns),
             'recent_payments' => $this->recentPayments(),
             'recent_move_outs' => $this->recentMoveOuts(),
-            'building_summary' => $this->buildingSummary(),
+            'building_summary' => $this->buildingSummaryFromBreakdowns($activeTenants, $breakdowns),
             'action_required' => $this->actionService->build(
                 (int) $now->month,
                 (int) $now->year,
@@ -98,9 +100,21 @@ class RentalDashboardService
     }
 
     /**
+     * @return Collection<int, Tenant>
+     */
+    private function activeTenants(): Collection
+    {
+        return Tenant::query()
+            ->with(['building', 'unit'])
+            ->where('status', TenantStatus::Active)
+            ->get();
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $breakdowns
      * @return array<string, mixed>
      */
-    private function aggregateOutstanding(): array
+    private function aggregateOutstandingFromBreakdowns(array $breakdowns): array
     {
         $totals = [
             'total_balance' => '0.00',
@@ -113,27 +127,23 @@ class RentalDashboardService
             'tenants_in_credit' => 0,
         ];
 
-        Tenant::query()
-            ->where('status', TenantStatus::Active)
-            ->each(function (Tenant $tenant) use (&$totals): void {
-                $breakdown = $this->breakdownService->breakdown($tenant);
+        foreach ($breakdowns as $breakdown) {
+            match ($breakdown['status']) {
+                'owes' => $totals['tenants_with_balance']++,
+                'credit' => $totals['tenants_in_credit']++,
+                default => $totals['tenants_paid_up']++,
+            };
 
-                match ($breakdown['status']) {
-                    'owes' => $totals['tenants_with_balance']++,
-                    'credit' => $totals['tenants_in_credit']++,
-                    default => $totals['tenants_paid_up']++,
-                };
+            if (bccomp($breakdown['total_due'], '0', 2) <= 0) {
+                continue;
+            }
 
-                if (bccomp($breakdown['total_due'], '0', 2) <= 0) {
-                    return;
-                }
-
-                $totals['total_balance'] = bcadd($totals['total_balance'], $breakdown['total_due'], 2);
-                $totals['rent_owed'] = bcadd($totals['rent_owed'], $breakdown['rent_owed'], 2);
-                $totals['services_owed'] = bcadd($totals['services_owed'], $breakdown['services_owed'], 2);
-                $totals['water_owed'] = bcadd($totals['water_owed'], $breakdown['water_owed'], 2);
-                $totals['electricity_owed'] = bcadd($totals['electricity_owed'], $breakdown['electricity_owed'], 2);
-            });
+            $totals['total_balance'] = bcadd($totals['total_balance'], $breakdown['total_due'], 2);
+            $totals['rent_owed'] = bcadd($totals['rent_owed'], $breakdown['rent_owed'], 2);
+            $totals['services_owed'] = bcadd($totals['services_owed'], $breakdown['services_owed'], 2);
+            $totals['water_owed'] = bcadd($totals['water_owed'], $breakdown['water_owed'], 2);
+            $totals['electricity_owed'] = bcadd($totals['electricity_owed'], $breakdown['electricity_owed'], 2);
+        }
 
         return array_merge($totals, [
             'currency_code' => MoneyConfig::rentalCurrency(),
@@ -208,34 +218,32 @@ class RentalDashboardService
     }
 
     /**
+     * @param  Collection<int, Tenant>  $activeTenants
+     * @param  array<int, array<string, mixed>>  $breakdowns
      * @return list<array<string, mixed>>
      */
-    private function topDebtors(int $limit = 8): array
+    private function topDebtorsFromBreakdowns(Collection $activeTenants, array $breakdowns, int $limit = 8): array
     {
         $debtors = [];
 
-        Tenant::query()
-            ->with(['building', 'unit'])
-            ->where('status', TenantStatus::Active)
-            ->each(function (Tenant $tenant) use (&$debtors): void {
-                $breakdown = $this->breakdownService->breakdown($tenant);
+        foreach ($activeTenants as $tenant) {
+            $breakdown = $breakdowns[$tenant->id] ?? null;
+            if ($breakdown === null || bccomp($breakdown['total_due'], '0', 2) <= 0) {
+                continue;
+            }
 
-                if (bccomp($breakdown['total_due'], '0', 2) <= 0) {
-                    return;
-                }
-
-                $debtors[] = [
-                    'tenant_id' => $tenant->id,
-                    'tenant_name' => $tenant->name,
-                    'building_name' => $tenant->building?->name,
-                    'unit_label' => $tenant->unit?->house_number,
-                    'balance' => $breakdown['total_due'],
-                    'rent_owed' => $breakdown['rent_owed'],
-                    'services_owed' => $breakdown['services_owed'],
-                    'water_owed' => $breakdown['water_owed'],
-                    'electricity_owed' => $breakdown['electricity_owed'],
-                ];
-            });
+            $debtors[] = [
+                'tenant_id' => $tenant->id,
+                'tenant_name' => $tenant->name,
+                'building_name' => $tenant->building?->name,
+                'unit_label' => $tenant->unit?->house_number,
+                'balance' => $breakdown['total_due'],
+                'rent_owed' => $breakdown['rent_owed'],
+                'services_owed' => $breakdown['services_owed'],
+                'water_owed' => $breakdown['water_owed'],
+                'electricity_owed' => $breakdown['electricity_owed'],
+            ];
+        }
 
         usort($debtors, fn (array $a, array $b) => bccomp($b['balance'], $a['balance'], 2));
 
@@ -291,11 +299,29 @@ class RentalDashboardService
     }
 
     /**
+     * @param  Collection<int, Tenant>  $activeTenants
+     * @param  array<int, array<string, mixed>>  $breakdowns
      * @return list<array<string, mixed>>
      */
-    private function buildingSummary(): array
+    private function buildingSummaryFromBreakdowns(Collection $activeTenants, array $breakdowns): array
     {
         $buildings = RentalBuilding::query()->orderBy('name')->get();
+        $outstandingByBuilding = [];
+
+        foreach ($activeTenants as $tenant) {
+            $breakdown = $breakdowns[$tenant->id] ?? null;
+            if ($breakdown === null || bccomp($breakdown['total_due'], '0', 2) <= 0) {
+                continue;
+            }
+
+            $buildingId = $tenant->rental_building_id;
+            $outstandingByBuilding[$buildingId] = bcadd(
+                $outstandingByBuilding[$buildingId] ?? '0.00',
+                $breakdown['total_due'],
+                2,
+            );
+        }
+
         $summary = [];
 
         foreach ($buildings as $building) {
@@ -310,31 +336,19 @@ class RentalDashboardService
                 ->where('rental_building_id', $building->id)
                 ->where('status', RentalUnitStatus::Vacant)
                 ->count();
-            $activeTenants = Tenant::query()
+            $activeTenantCount = $activeTenants
                 ->where('rental_building_id', $building->id)
-                ->where('status', TenantStatus::Active)
                 ->count();
-
-            $outstanding = '0.00';
-            Tenant::query()
-                ->where('rental_building_id', $building->id)
-                ->where('status', TenantStatus::Active)
-                ->each(function (Tenant $tenant) use (&$outstanding): void {
-                    $due = $this->breakdownService->totalDue($tenant);
-                    if (bccomp($due, '0', 2) > 0) {
-                        $outstanding = bcadd($outstanding, $due, 2);
-                    }
-                });
 
             $summary[] = [
                 'building_id' => $building->id,
                 'building_name' => $building->name,
-                'active_tenants' => $activeTenants,
+                'active_tenants' => $activeTenantCount,
                 'total_units' => $totalUnits,
                 'occupied_units' => $occupiedUnits,
                 'vacant_units' => $vacantUnits,
                 'occupancy_rate' => $this->occupancyRate($occupiedUnits, $totalUnits),
-                'outstanding_balance' => $outstanding,
+                'outstanding_balance' => $outstandingByBuilding[$building->id] ?? '0.00',
             ];
         }
 

@@ -32,12 +32,22 @@ class SalesPayment extends Model
         'bank',
         'remark',
         'paid_at',
-        'status',
-        'cancelled_at',
-        'cancelled_by',
-        'created_by',
-        'updated_by',
     ];
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function createActive(array $attributes, int $createdBy): self
+    {
+        $payment = new static($attributes);
+        $payment->forceFill([
+            'status' => SalesPaymentStatus::Active,
+            'created_by' => $createdBy,
+        ]);
+        $payment->save();
+
+        return $payment;
+    }
 
     /**
      * @return array<string, string>

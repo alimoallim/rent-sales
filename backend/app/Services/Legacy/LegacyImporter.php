@@ -79,6 +79,9 @@ class LegacyImporter
     /** @var array<string, true> */
     private array $importedWaterBillPeriods = [];
 
+    /** @var array<string, true> */
+    private array $importedInvoiceReferences = [];
+
     private ?int $fallbackUserId = null;
 
     public function __construct(
@@ -102,6 +105,7 @@ class LegacyImporter
     ): LegacyImportReport {
         $this->report = new LegacyImportReport;
         $this->importedWaterBillPeriods = [];
+        $this->importedInvoiceReferences = [];
         $this->data = $this->normalizeParsedData($this->parser->parseFile($path));
 
         if (! $dryRun && ! $fresh && RentalBuilding::query()->whereNotNull('legacy_id')->exists()) {
@@ -435,6 +439,13 @@ class LegacyImporter
                 continue;
             }
 
+            if ($status === TenantStatus::Active) {
+                Tenant::query()
+                    ->where('rental_unit_id', $unitId)
+                    ->where('status', TenantStatus::Active)
+                    ->update(['status' => TenantStatus::Inactive]);
+            }
+
             $tenant = Tenant::query()->create($payload);
             $this->tenantIds[$legacyId] = $tenant->id;
             $this->report->increment('tenants');
@@ -703,17 +714,15 @@ class LegacyImporter
                 continue;
             }
 
-            RentPayment::query()->create([
+            RentPayment::createActive([
                 'legacy_id' => $legacyId,
                 'tenant_id' => $tenantId,
                 'rental_building_id' => $buildingId,
                 'amount' => $this->money($row['amount'] ?? 0),
                 'discount' => $this->money($row['discount'] ?? 0),
-                'invoice_reference' => $this->nullableString($row['invoice'] ?? null),
+                'invoice_reference' => $this->uniqueInvoiceReference('rent_payments', $buildingId, $row['invoice'] ?? null, $legacyId),
                 'paid_at' => $this->legacyTimestamp($row['date_created'] ?? null, 'payment', $legacyId),
-                'status' => RentPaymentStatus::Active,
-                'created_by' => $this->resolveUserId($this->legacyUserReference($row)),
-            ]);
+            ], $this->resolveUserId($this->legacyUserReference($row)));
 
             $this->report->increment('rent_payments');
         }
@@ -1163,7 +1172,7 @@ class LegacyImporter
                 'sale_building_id' => $buildingId,
                 'amount' => $this->money($row['amount'] ?? 0),
                 'discount' => $this->money($row['discount'] ?? 0),
-                'invoice_reference' => $this->nullableString($row['invoice'] ?? null),
+                'invoice_reference' => $this->uniqueInvoiceReference('sales_payments', $buildingId, $row['invoice'] ?? null, $legacyId),
                 'bank' => $this->nullableString($row['bank'] ?? null),
                 'remark' => $this->nullableString($row['remark'] ?? null),
                 'paid_at' => $paidAt,
@@ -1306,5 +1315,22 @@ class LegacyImporter
         }
 
         return date('Y-m-d H:i:s', $parsed);
+    }
+
+    private function uniqueInvoiceReference(string $table, int $buildingId, mixed $reference, int $legacyId): ?string
+    {
+        $reference = $this->nullableString($reference);
+        if ($reference === null) {
+            return null;
+        }
+
+        $key = "{$table}:{$buildingId}:{$reference}";
+        if (isset($this->importedInvoiceReferences[$key])) {
+            return $reference.'-L'.$legacyId;
+        }
+
+        $this->importedInvoiceReferences[$key] = true;
+
+        return $reference;
     }
 }

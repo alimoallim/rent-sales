@@ -18,6 +18,8 @@ class TenantBalanceBreakdownService
 
     public const PURPOSE_ELECTRICITY = 'Electricity';
 
+    public const PURPOSE_ADJUSTMENT = 'Adjustment';
+
     /** @return list<string> */
     public static function rentServicePurposes(): array
     {
@@ -46,30 +48,76 @@ class TenantBalanceBreakdownService
     {
         $tenantId = $tenant instanceof Tenant ? $tenant->id : $tenant;
 
-        $waterCharged = $this->sumWaterCharges($tenantId);
-        $electricityCharged = $this->sumElectricityCharges($tenantId);
-        $servicesCharged = $this->sumServiceCharges($tenantId);
-        $rentCharged = $this->sumRentCharges($tenantId);
+        return $this->breakdownsForTenants([$tenantId], $excludePaymentId)[$tenantId];
+    }
 
-        $paidPool = $this->sumActivePayments($tenantId, $excludePaymentId);
+    /**
+     * @param  list<int>  $tenantIds
+     * @return array<int, array{
+     *     water_owed: string,
+     *     electricity_owed: string,
+     *     services_owed: string,
+     *     rent_owed: string,
+     *     total_due: string,
+     *     credit_balance: string,
+     *     status: 'owes'|'paid_up'|'credit',
+     *     currency_code: string
+     * }>
+     */
+    public function breakdownsForTenants(array $tenantIds, ?int $excludePaymentId = null): array
+    {
+        if ($tenantIds === []) {
+            return [];
+        }
 
-        $waterOwed = $this->applyPayment($waterCharged, $paidPool);
-        $paidPool = $this->remainingPool($waterCharged, $paidPool);
+        $chargeAggregates = $this->batchChargeAggregates($tenantIds);
+        $paidTotals = $this->batchPaidTotals($tenantIds, $excludePaymentId);
 
-        $electricityOwed = $this->applyPayment($electricityCharged, $paidPool);
-        $paidPool = $this->remainingPool($electricityCharged, $paidPool);
+        $results = [];
+        foreach ($tenantIds as $tenantId) {
+            $results[$tenantId] = $this->composeBreakdown(
+                $chargeAggregates[$tenantId],
+                $paidTotals[$tenantId] ?? '0.00',
+            );
+        }
 
-        $servicesOwed = $this->applyPayment($servicesCharged, $paidPool);
-        $paidPool = $this->remainingPool($servicesCharged, $paidPool);
+        return $results;
+    }
 
-        $rentOwed = $this->applyPayment($rentCharged, $paidPool);
+    /**
+     * @param  array{
+     *     water: string,
+     *     electricity: string,
+     *     services: string,
+     *     rent: string,
+     *     total_charged: string
+     * }  $charges
+     * @return array{
+     *     water_owed: string,
+     *     electricity_owed: string,
+     *     services_owed: string,
+     *     rent_owed: string,
+     *     total_due: string,
+     *     credit_balance: string,
+     *     status: 'owes'|'paid_up'|'credit',
+     *     currency_code: string
+     * }
+     */
+    private function composeBreakdown(array $charges, string $paidTotal): array
+    {
+        $paidPool = $paidTotal;
 
-        $chargedTotal = bcadd(
-            bcadd(bcadd($waterCharged, $electricityCharged, 2), $servicesCharged, 2),
-            $rentCharged,
-            2,
-        );
-        $totalDue = bcsub($chargedTotal, $this->sumActivePayments($tenantId, $excludePaymentId), 2);
+        $waterOwed = $this->applyPayment($charges['water'], $paidPool);
+        $paidPool = $this->remainingPool($charges['water'], $paidPool);
+
+        $electricityOwed = $this->applyPayment($charges['electricity'], $paidPool);
+        $paidPool = $this->remainingPool($charges['electricity'], $paidPool);
+
+        $servicesOwed = $this->applyPayment($charges['services'], $paidPool);
+        $paidPool = $this->remainingPool($charges['services'], $paidPool);
+
+        $rentOwed = $this->applyPayment($charges['rent'], $paidPool);
+        $totalDue = bcsub($charges['total_charged'], $paidTotal, 2);
 
         return [
             'water_owed' => $waterOwed,
@@ -83,58 +131,89 @@ class TenantBalanceBreakdownService
         ];
     }
 
+    /**
+     * @param  list<int>  $tenantIds
+     * @return array<int, array{water: string, electricity: string, services: string, rent: string, total_charged: string}>
+     */
+    private function batchChargeAggregates(array $tenantIds): array
+    {
+        $aggregates = [];
+        foreach ($tenantIds as $tenantId) {
+            $aggregates[$tenantId] = [
+                'water' => '0.00',
+                'electricity' => '0.00',
+                'services' => '0.00',
+                'rent' => '0.00',
+                'total_charged' => '0.00',
+            ];
+        }
+
+        $rows = RentCharge::query()
+            ->whereIn('tenant_id', $tenantIds)
+            ->selectRaw('tenant_id, purpose, COALESCE(SUM(total_amount), 0) as total_amount, COALESCE(SUM(service_amount), 0) as service_amount, COALESCE(SUM(rent_amount), 0) as rent_amount')
+            ->groupBy('tenant_id', 'purpose')
+            ->get();
+
+        foreach ($rows as $row) {
+            $tenantId = (int) $row->tenant_id;
+            $purpose = (string) $row->purpose;
+            $aggregates[$tenantId]['total_charged'] = bcadd(
+                $aggregates[$tenantId]['total_charged'],
+                bcadd((string) $row->total_amount, '0', 2),
+                2,
+            );
+
+            if ($purpose === self::PURPOSE_WATER) {
+                $aggregates[$tenantId]['water'] = bcadd($aggregates[$tenantId]['water'], (string) $row->total_amount, 2);
+            } elseif ($purpose === self::PURPOSE_ELECTRICITY) {
+                $aggregates[$tenantId]['electricity'] = bcadd($aggregates[$tenantId]['electricity'], (string) $row->total_amount, 2);
+            } elseif (in_array($purpose, self::rentServicePurposes(), true)) {
+                $aggregates[$tenantId]['services'] = bcadd($aggregates[$tenantId]['services'], (string) $row->service_amount, 2);
+                $aggregates[$tenantId]['rent'] = bcadd($aggregates[$tenantId]['rent'], (string) $row->rent_amount, 2);
+            }
+        }
+
+        return $aggregates;
+    }
+
+    /**
+     * @param  list<int>  $tenantIds
+     * @return array<int, string>
+     */
+    private function batchPaidTotals(array $tenantIds, ?int $excludePaymentId): array
+    {
+        $paidTotals = array_fill_keys($tenantIds, '0.00');
+
+        $paymentsQuery = RentPayment::query()
+            ->whereIn('tenant_id', $tenantIds)
+            ->where('status', RentPaymentStatus::Active);
+
+        if ($excludePaymentId !== null) {
+            $paymentsQuery->where('id', '!=', $excludePaymentId);
+        }
+
+        $payments = $paymentsQuery
+            ->groupBy('tenant_id')
+            ->selectRaw('tenant_id, COALESCE(SUM(amount), 0) + COALESCE(SUM(discount), 0) as total')
+            ->pluck('total', 'tenant_id');
+
+        foreach ($tenantIds as $tenantId) {
+            $paidTotals[$tenantId] = bcadd((string) ($payments[$tenantId] ?? '0'), '0', 2);
+        }
+
+        return $paidTotals;
+    }
+
     public function totalDue(Tenant|int $tenant, ?int $excludePaymentId = null): string
     {
-        return $this->breakdown($tenant, $excludePaymentId)['total_due'];
+        $tenantId = $tenant instanceof Tenant ? $tenant->id : $tenant;
+
+        return $this->breakdownsForTenants([$tenantId], $excludePaymentId)[$tenantId]['total_due'];
     }
 
-    private function sumWaterCharges(int $tenantId): string
+    public function totalCharged(int $tenantId): string
     {
-        return (string) RentCharge::query()
-            ->where('tenant_id', $tenantId)
-            ->where('purpose', self::PURPOSE_WATER)
-            ->sum('total_amount');
-    }
-
-    private function sumElectricityCharges(int $tenantId): string
-    {
-        return (string) RentCharge::query()
-            ->where('tenant_id', $tenantId)
-            ->where('purpose', self::PURPOSE_ELECTRICITY)
-            ->sum('total_amount');
-    }
-
-    private function sumServiceCharges(int $tenantId): string
-    {
-        return (string) RentCharge::query()
-            ->where('tenant_id', $tenantId)
-            ->whereIn('purpose', self::rentServicePurposes())
-            ->sum('service_amount');
-    }
-
-    private function sumRentCharges(int $tenantId): string
-    {
-        return (string) RentCharge::query()
-            ->where('tenant_id', $tenantId)
-            ->whereIn('purpose', self::rentServicePurposes())
-            ->sum('rent_amount');
-    }
-
-    private function sumActivePayments(int $tenantId, ?int $excludePaymentId): string
-    {
-        $amount = (string) RentPayment::query()
-            ->where('tenant_id', $tenantId)
-            ->where('status', RentPaymentStatus::Active)
-            ->when($excludePaymentId, fn ($q) => $q->where('id', '!=', $excludePaymentId))
-            ->sum('amount');
-
-        $discount = (string) RentPayment::query()
-            ->where('tenant_id', $tenantId)
-            ->where('status', RentPaymentStatus::Active)
-            ->when($excludePaymentId, fn ($q) => $q->where('id', '!=', $excludePaymentId))
-            ->sum('discount');
-
-        return bcadd($amount, $discount, 2);
+        return bcadd((string) RentCharge::query()->where('tenant_id', $tenantId)->sum('total_amount'), '0', 2);
     }
 
     private function applyPayment(string $charged, string $paidPool): string

@@ -151,11 +151,31 @@
             <input v-model="form.remark" class="input-field" />
           </FormField>
         </div>
-        <p v-if="error" class="mt-3 text-sm text-red-600 dark:text-red-400 lg:col-span-2">{{ error }}</p>
+
+        <div
+          v-if="wouldOverpay"
+          class="alert-error lg:col-span-2"
+          role="alert"
+        >
+          <p class="font-semibold">Payment exceeds outstanding balance</p>
+          <dl class="mt-2 grid gap-1.5">
+            <div class="flex items-baseline justify-between gap-4">
+              <dt>Total being recorded</dt>
+              <dd class="font-medium tabular-nums">{{ formatMoney(paymentTotal, 'sales') }}</dd>
+            </div>
+            <div class="flex items-baseline justify-between gap-4">
+              <dt>Outstanding</dt>
+              <dd class="font-medium tabular-nums">{{ formatMoney(amountOwed, 'sales') }}</dd>
+            </div>
+          </dl>
+          <p class="mt-2 font-medium">Reduce the amount or discount before saving.</p>
+        </div>
+
+        <p v-if="error" class="alert-error lg:col-span-2">{{ error }}</p>
       </form>
       <template #footer>
         <button type="button" class="btn-secondary w-full sm:w-auto" @click="closeForm">Cancel</button>
-        <button type="submit" form="sales-payment-form" class="btn-primary w-full sm:w-auto" :disabled="saving">
+        <button type="submit" form="sales-payment-form" class="btn-primary w-full sm:w-auto" :disabled="paymentBlocked || saving">
           {{ saving ? 'Saving…' : 'Save' }}
         </button>
       </template>
@@ -164,7 +184,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import PageHeader from '../../components/PageHeader.vue'
 import AppDialog from '../../components/ui/AppDialog.vue'
@@ -243,6 +263,18 @@ const columns = [
   { key: 'status', label: 'Status', tabletCard: true },
 ]
 
+const paymentTotal = computed(() => Number(form.amount || 0) + Number(form.discount || 0))
+
+const amountOwed = computed(() => {
+  if (!summary.value) return 0
+  const balance = Number(summary.value.balance || 0)
+  return balance > 0 ? balance : 0
+})
+
+const wouldOverpay = computed(() => paymentTotal.value > amountOwed.value)
+
+const paymentBlocked = computed(() => Boolean(summary.value) && wouldOverpay.value)
+
 async function loadBuildings() {
   const response = await fetchBuildings()
   buildings.value = response.data
@@ -252,14 +284,27 @@ async function loadTable() {
   await reload()
 }
 
-async function onClientChange() {
-  summary.value = null
-  if (!form.client_id) return
+async function loadSummary() {
+  if (!form.client_id) {
+    summary.value = null
+    return
+  }
+
   try {
-    summary.value = await fetchClientPaymentSummary(form.client_id)
+    const params = {}
+    if (editing.value) {
+      params.exclude_payment_id = editing.value.id
+    }
+
+    summary.value = await fetchClientPaymentSummary(form.client_id, params)
   } catch {
+    summary.value = null
     toast.error('Could not load client balance.')
   }
+}
+
+async function onClientChange() {
+  await loadSummary()
 }
 
 function onBuildingChange() {
@@ -299,9 +344,10 @@ function openEdit(payment) {
     remark: payment.remark || '',
     paid_at: payment.paid_at?.slice(0, 10) || '',
   })
-  onClientChange()
   error.value = ''
+  summary.value = null
   showForm.value = true
+  loadSummary()
 }
 
 function closeForm() {
@@ -310,6 +356,17 @@ function closeForm() {
 
 async function save() {
   error.value = ''
+
+  if (paymentTotal.value <= 0) {
+    error.value = 'Enter an amount greater than zero.'
+    return
+  }
+
+  if (paymentBlocked.value) {
+    error.value = 'Payment cannot exceed the client outstanding balance.'
+    return
+  }
+
   saving.value = true
   try {
     const payload = {
@@ -327,7 +384,10 @@ async function save() {
     closeForm()
     await reload()
   } catch (e) {
-    error.value = e.response?.data?.message || 'Could not save payment.'
+    const validation = e.response?.data?.errors
+    error.value = validation
+      ? Object.values(validation).flat().join(' ')
+      : e.response?.data?.message || 'Could not save payment.'
   } finally {
     saving.value = false
   }
@@ -353,6 +413,13 @@ async function cancelOne(payment) {
     toast.error(e.response?.data?.message || 'Could not cancel payment.')
   }
 }
+
+watch(
+  () => [form.amount, form.discount],
+  () => {
+    error.value = ''
+  },
+)
 
 onMounted(async () => {
   await loadBuildings()

@@ -100,11 +100,11 @@ Route::prefix('v1')->group(function (): void {
         Route::get('utilities/electricity', [BuildingUtilityController::class, 'electricityIndex']);
         Route::post('utilities/electricity', [BuildingUtilityController::class, 'electricityStore']);
 
-        Route::apiResource('expenses', RentalExpenseController::class);
-        Route::apiResource('employees', EmployeeController::class);
-        Route::apiResource('payroll', PayrollEntryController::class)->parameters(['payroll' => 'payrollEntry']);
+        Route::apiResource('expenses', RentalExpenseController::class)->except(['show']);
+        Route::apiResource('employees', EmployeeController::class)->except(['show']);
+        Route::apiResource('payroll', PayrollEntryController::class)->parameters(['payroll' => 'payrollEntry'])->except(['show']);
         Route::apiResource('shareholders', ShareholderController::class)->except(['show']);
-        Route::apiResource('shareholder-bills', ShareholderBillController::class)->parameters(['shareholder-bill' => 'shareholderBill']);
+        Route::apiResource('shareholder-bills', ShareholderBillController::class)->parameters(['shareholder-bill' => 'shareholderBill'])->except(['show']);
 
         Route::prefix('reports')->group(function (): void {
             Route::get('tenant-balances', [RentalReportController::class, 'tenantBalances']);

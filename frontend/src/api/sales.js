@@ -53,8 +53,8 @@ export async function fetchClient(clientId) {
   return data.data
 }
 
-export async function fetchClientPaymentSummary(clientId) {
-  const { data } = await api.get(`/api/v1/sales/clients/${clientId}/payment-summary`)
+export async function fetchClientPaymentSummary(clientId, params = {}) {
+  const { data } = await api.get(`/api/v1/sales/clients/${clientId}/payment-summary`, { params })
   return data.data
 }
 

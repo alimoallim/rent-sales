@@ -72,6 +72,40 @@ class SalesFlowTest extends TestCase
     }
 
     #[Test]
+    public function test_sales_payment_cannot_exceed_client_balance(): void
+    {
+        $building = SaleBuilding::query()->create(['name' => 'Balance Check Tower']);
+        $unit = SaleUnit::query()->create([
+            'sale_building_id' => $building->id,
+            'house_number' => 'C1',
+            'floor' => '1',
+            'description' => 'Unit',
+            'list_price' => '100000.00',
+            'status' => SaleUnitStatus::Available,
+        ]);
+        $client = Client::query()->create([
+            'sale_building_id' => $building->id,
+            'sale_unit_id' => $unit->id,
+            'name' => 'Balance Buyer',
+            'phone' => '0700222333',
+            'agreed_sale_price' => '100000.00',
+            'deposit' => '10000.00',
+            'status' => ClientStatus::Active,
+        ]);
+
+        $this->actingAs($this->user)->postJson('/api/v1/sales/payments', [
+            'client_id' => $client->id,
+            'sale_building_id' => $building->id,
+            'amount' => '95000.00',
+            'discount' => '0.00',
+            'paid_at' => '2025-04-01',
+        ])->assertUnprocessable()
+            ->assertJsonValidationErrors(['amount']);
+
+        $this->assertDatabaseCount('sales_payments', 0);
+    }
+
+    #[Test]
     public function test_can_disable_client_with_active_payments(): void
     {
         $building = SaleBuilding::query()->create(['name' => 'Test Building']);

@@ -53,14 +53,13 @@ class SalesDashboardTest extends TestCase
             'status' => ClientStatus::Active,
         ]);
 
-        SalesPayment::query()->create([
+        SalesPayment::createActive([
             'client_id' => $client->id,
             'sale_building_id' => $building->id,
             'amount' => '20000.00',
             'discount' => '0.00',
             'paid_at' => now(),
-            'status' => SalesPaymentStatus::Active,
-        ]);
+        ], $user->id);
 
         $response = $this->actingAs($user)->getJson('/api/v1/sales/dashboard');
 

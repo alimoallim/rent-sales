@@ -3,7 +3,6 @@
 namespace Tests\Feature\Rental;
 
 use App\Enums\EmployeeStatus;
-use App\Enums\RentPaymentStatus;
 use App\Enums\RentalUnitStatus;
 use App\Enums\TenantStatus;
 use App\Models\Employee;
@@ -11,6 +10,7 @@ use App\Models\PayrollEntry;
 use App\Models\RentalBuilding;
 use App\Models\RentalExpense;
 use App\Models\RentalUnit;
+use App\Models\RentPayment;
 use App\Models\Shareholder;
 use App\Models\ShareholderBill;
 use App\Models\Tenant;
@@ -125,15 +125,13 @@ class RentalOperationsTest extends TestCase
             'created_by' => $user->id,
         ]);
 
-        \App\Models\RentPayment::query()->create([
+        RentPayment::createActive([
             'tenant_id' => $tenant->id,
             'rental_building_id' => $building->id,
             'amount' => 50000,
             'discount' => 0,
             'paid_at' => '2026-06-15',
-            'status' => RentPaymentStatus::Active,
-            'created_by' => $user->id,
-        ]);
+        ], $user->id);
 
         \App\Models\RentCharge::query()->create([
             'tenant_id' => $tenant->id,

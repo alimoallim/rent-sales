@@ -12,6 +12,10 @@ use Illuminate\Support\Carbon;
 
 class ArrearsAgingService
 {
+    public function __construct(
+        private readonly TenantBalanceBreakdownService $balanceBreakdown,
+    ) {}
+
     /**
      * Age outstanding balances by billing period using FIFO payment allocation.
      *
@@ -138,11 +142,7 @@ class ArrearsAgingService
             $maxDaysOverdue = max($maxDaysOverdue, $daysPastDue);
         }
 
-        $totalBalance = bcadd(
-            bcadd(bcadd($buckets['current'], $buckets['days_31_60'], 2), $buckets['days_61_90'], 2),
-            $buckets['days_90_plus'],
-            2,
-        );
+        $totalBalance = $this->balanceBreakdown->totalDue($tenant);
 
         return [
             'total_balance' => $totalBalance,

@@ -2,7 +2,7 @@
 
 namespace App\Policies;
 
-use App\Enums\UserRole;
+use App\Models\RentPayment;
 use App\Models\User;
 
 class RentalModulePolicy
@@ -25,6 +25,11 @@ class RentalModulePolicy
     public function update(User $user): bool
     {
         return $user->canAccessRental();
+    }
+
+    public function void(User $user, RentPayment $payment): bool
+    {
+        return $user->canAccessRental() && ($user->isManager() || $user->isAdmin());
     }
 
     public function delete(User $user): bool

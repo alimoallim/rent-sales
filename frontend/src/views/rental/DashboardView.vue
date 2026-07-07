@@ -65,14 +65,14 @@
           label="Missing water readings"
           :value="String(data.utilities.missing_water_readings.count)"
           hint="Tenants without a reading this month"
-          :accent="data.utilities.missing_water_readings.count > 0 ? 'warning' : 'neutral'"
+          :accent="data.utilities.missing_water_readings.count > 0 ? 'warning' : 'info'"
           to="/rental/water-bills"
         />
         <DashboardMetricCard
           label="Missing electricity readings"
           :value="String(data.utilities.missing_electricity_readings.count)"
           hint="Tenants without a reading this month"
-          :accent="data.utilities.missing_electricity_readings.count > 0 ? 'warning' : 'neutral'"
+          :accent="data.utilities.missing_electricity_readings.count > 0 ? 'warning' : 'accent'"
           to="/rental/electricity-bills"
         />
         <DashboardMetricCard
@@ -102,17 +102,17 @@
             </div>
           </div>
           <div class="dashboard-breakdown-footer">
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">Paid up</p>
-              <p class="text-sm font-semibold tabular-nums text-emerald-700">{{ data.outstanding.tenants_paid_up }}</p>
+            <div class="dashboard-stat-chip dashboard-stat-chip-success">
+              <p class="text-xs text-emerald-700 dark:text-emerald-300">Paid up</p>
+              <p class="text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">{{ data.outstanding.tenants_paid_up }}</p>
             </div>
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">In credit</p>
-              <p class="text-sm font-semibold tabular-nums text-sky-700">{{ data.outstanding.tenants_in_credit }}</p>
+            <div class="dashboard-stat-chip dashboard-stat-chip-info">
+              <p class="text-xs text-sky-700 dark:text-sky-300">In credit</p>
+              <p class="text-sm font-semibold tabular-nums text-sky-800 dark:text-sky-200">{{ data.outstanding.tenants_in_credit }}</p>
             </div>
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">With balance</p>
-              <p class="text-sm font-semibold tabular-nums text-amber-700">{{ data.outstanding.tenants_with_balance }}</p>
+            <div class="dashboard-stat-chip dashboard-stat-chip-warning">
+              <p class="text-xs text-amber-700 dark:text-amber-300">With balance</p>
+              <p class="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-200">{{ data.outstanding.tenants_with_balance }}</p>
             </div>
           </div>
         </DashboardPanel>
@@ -123,29 +123,29 @@
           action-to="/rental/payments"
         >
           <div class="dashboard-collections">
-            <div class="dashboard-collections-card">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">This month</p>
+            <div class="dashboard-collections-card dashboard-collections-card-success">
+              <p class="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">This month</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
                 {{ formatMoney(data.collections.current_month, 'rental') }}
               </p>
               <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ data.collections.payment_count_current_month }} payments recorded</p>
             </div>
             <div class="dashboard-collections-card dashboard-collections-card-muted">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last month</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Last month</p>
               <p class="mt-1 text-xl font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">
                 {{ formatMoney(data.collections.previous_month, 'rental') }}
               </p>
               <p
                 v-if="data.collections.change_percent !== null"
                 class="mt-1 text-xs font-medium"
-                :class="data.collections.change_percent >= 0 ? 'text-emerald-700' : 'text-red-700'"
+                :class="data.collections.change_percent >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'"
               >
                 {{ data.collections.change_percent >= 0 ? '+' : '' }}{{ data.collections.change_percent }}% change
               </p>
             </div>
           </div>
           <div class="dashboard-charges-summary">
-            <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Charges this month</p>
+            <p class="text-xs font-medium uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Charges this month</p>
             <p class="mt-1 text-lg font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
               {{ formatMoney(data.charges.current_month_total, 'rental') }}
             </p>

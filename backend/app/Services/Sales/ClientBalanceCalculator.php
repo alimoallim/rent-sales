@@ -8,32 +8,25 @@ use App\Support\MoneyConfig;
 
 class ClientBalanceCalculator
 {
-    public function calculate(Client|int $client): string
+    public function calculate(Client|int $client, ?int $excludePaymentId = null): string
     {
-        $clientModel = $client instanceof Client
-            ? $client
-            : Client::query()->findOrFail($client);
+        return $this->summary($client, $excludePaymentId)['balance'];
+    }
 
-        $agreedPrice = (string) $clientModel->agreed_sale_price;
-        $deposit = (string) $clientModel->deposit;
+    /**
+     * Outstanding amount the client still owes before a new payment is applied.
+     */
+    public function amountOwed(Client|int $client, ?int $excludePaymentId = null): string
+    {
+        $balance = $this->calculate($client, $excludePaymentId);
 
-        $payments = (string) $clientModel->payments()
-            ->where('status', SalesPaymentStatus::Active)
-            ->sum('amount');
-
-        $discounts = (string) $clientModel->payments()
-            ->where('status', SalesPaymentStatus::Active)
-            ->sum('discount');
-
-        $paidTotal = bcadd(bcadd($payments, $deposit, 2), $discounts, 2);
-
-        return bcsub($agreedPrice, $paidTotal, 2);
+        return bccomp($balance, '0', 2) > 0 ? $balance : '0.00';
     }
 
     /**
      * @return array{agreed_sale_price: string, deposit: string, payments_total: string, discounts_total: string, paid_total: string, balance: string, status: string, currency_code: string}
      */
-    public function summary(Client|int $client): array
+    public function summary(Client|int $client, ?int $excludePaymentId = null): array
     {
         $clientModel = $client instanceof Client
             ? $client
@@ -42,13 +35,14 @@ class ClientBalanceCalculator
         $agreedPrice = bcadd((string) $clientModel->agreed_sale_price, '0', 2);
         $deposit = bcadd((string) $clientModel->deposit, '0', 2);
 
-        $payments = bcadd((string) $clientModel->payments()
-            ->where('status', SalesPaymentStatus::Active)
-            ->sum('amount'), '0', 2);
+        $paymentsQuery = $clientModel->payments()->where('status', SalesPaymentStatus::Active);
+        if ($excludePaymentId !== null) {
+            $paymentsQuery->where('id', '!=', $excludePaymentId);
+        }
 
-        $discounts = bcadd((string) $clientModel->payments()
-            ->where('status', SalesPaymentStatus::Active)
-            ->sum('discount'), '0', 2);
+        $payments = bcadd((string) (clone $paymentsQuery)->sum('amount'), '0', 2);
+
+        $discounts = bcadd((string) (clone $paymentsQuery)->sum('discount'), '0', 2);
 
         $paidTotal = bcadd(bcadd($payments, $deposit, 2), $discounts, 2);
         $balance = bcsub($agreedPrice, $paidTotal, 2);

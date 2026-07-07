@@ -27,12 +27,22 @@ class RentPayment extends Model
         'discount',
         'invoice_reference',
         'paid_at',
-        'status',
-        'voided_at',
-        'voided_by',
-        'created_by',
-        'updated_by',
     ];
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public static function createActive(array $attributes, int $createdBy): self
+    {
+        $payment = new static($attributes);
+        $payment->forceFill([
+            'status' => RentPaymentStatus::Active,
+            'created_by' => $createdBy,
+        ]);
+        $payment->save();
+
+        return $payment;
+    }
 
     /**
      * @return array<string, string>

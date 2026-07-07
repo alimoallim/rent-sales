@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\UpdateProfileRequest;
 use App\Http\Requests\Auth\VerifyResetCodeRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Auth\AuthSecurityLogger;
 use App\Services\Auth\PasswordResetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,17 +22,25 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    public function __construct(
+        private readonly AuthSecurityLogger $securityLogger,
+    ) {}
+
     public function login(LoginRequest $request): UserResource
     {
         $user = User::query()->where('username', $request->string('username'))->first();
 
         if ($user === null || ! Hash::check($request->string('password'), $user->password)) {
+            $this->securityLogger->loginFailed($request);
+
             throw ValidationException::withMessages([
                 'username' => ['These credentials do not match our records.'],
             ]);
         }
 
         if ($user->status !== UserStatus::Active) {
+            $this->securityLogger->loginFailed($request, $user->username);
+
             throw ValidationException::withMessages([
                 'username' => ['This account is inactive.'],
             ]);
@@ -39,6 +48,8 @@ class AuthController extends Controller
 
         Auth::login($user, $request->boolean('remember'));
         $request->session()->regenerate();
+
+        $this->securityLogger->loginSucceeded($request, $user->id);
 
         return new UserResource($user);
     }
@@ -50,25 +61,35 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        $userId = $request->user()?->id;
+
         Auth::guard('web')->logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
+
+        $this->securityLogger->logout($request, $userId);
 
         return response()->json(['message' => 'Logged out.']);
     }
 
     public function updatePassword(UpdatePasswordRequest $request): JsonResponse
     {
-        $request->user()->update([
+        $user = $request->user();
+        $user->update([
             'password' => $request->string('password'),
         ]);
+
+        $this->securityLogger->passwordChanged($request, $user->id);
 
         return response()->json(['message' => 'Password updated.']);
     }
 
     public function forgotPassword(ForgotPasswordRequest $request, PasswordResetService $passwordResetService): JsonResponse
     {
-        $passwordResetService->sendResetCode($request->string('email')->toString());
+        $email = $request->string('email')->toString();
+        $passwordResetService->sendResetCode($email);
+
+        $this->securityLogger->passwordResetRequested($request, $email);
 
         return response()->json([
             'message' => 'If an account with that email exists, we sent a verification code.',
@@ -89,11 +110,14 @@ class AuthController extends Controller
 
     public function resetPassword(ResetPasswordWithCodeRequest $request, PasswordResetService $passwordResetService): JsonResponse
     {
+        $email = $request->string('email')->toString();
         $passwordResetService->resetPassword(
-            $request->string('email')->toString(),
+            $email,
             $request->string('code')->toString(),
             $request->string('password')->toString(),
         );
+
+        $this->securityLogger->passwordResetCompleted($request, $email);
 
         return response()->json([
             'message' => 'Password has been reset. You can sign in now.',

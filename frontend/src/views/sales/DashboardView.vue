@@ -156,19 +156,19 @@
             </div>
           </div>
           <div class="dashboard-breakdown-footer">
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">Outstanding</p>
-              <p class="text-sm font-semibold tabular-nums text-amber-700">
+            <div class="dashboard-stat-chip dashboard-stat-chip-warning">
+              <p class="text-xs text-amber-700 dark:text-amber-300">Outstanding</p>
+              <p class="text-sm font-semibold tabular-nums text-amber-800 dark:text-amber-200">
                 {{ formatMoney(data.portfolio.outstanding_total, 'sales') }}
               </p>
             </div>
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">Collection rate</p>
-              <p class="text-sm font-semibold tabular-nums text-indigo-700">{{ data.portfolio.collection_rate }}%</p>
+            <div class="dashboard-stat-chip dashboard-stat-chip-info">
+              <p class="text-xs text-indigo-700 dark:text-indigo-300">Collection rate</p>
+              <p class="text-sm font-semibold tabular-nums text-indigo-800 dark:text-indigo-200">{{ data.portfolio.collection_rate }}%</p>
             </div>
-            <div>
-              <p class="text-xs text-zinc-500 dark:text-zinc-400">Paid up</p>
-              <p class="text-sm font-semibold tabular-nums text-emerald-700">{{ data.portfolio.clients_paid_up }}</p>
+            <div class="dashboard-stat-chip dashboard-stat-chip-success">
+              <p class="text-xs text-emerald-700 dark:text-emerald-300">Paid up</p>
+              <p class="text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">{{ data.portfolio.clients_paid_up }}</p>
             </div>
           </div>
         </DashboardPanel>
@@ -179,22 +179,22 @@
           action-to="/sales/payments"
         >
           <div class="dashboard-collections">
-            <div class="dashboard-collections-card border-zinc-200 bg-zinc-50/80 dark:border-zinc-700 dark:bg-zinc-800/50">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">This month</p>
+            <div class="dashboard-collections-card dashboard-collections-card-success">
+              <p class="text-xs font-medium uppercase tracking-wide text-emerald-700 dark:text-emerald-300">This month</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">
                 {{ formatMoney(data.collections.current_month, 'sales') }}
               </p>
               <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{{ data.collections.payment_count_current_month }} payments</p>
             </div>
             <div class="dashboard-collections-card dashboard-collections-card-muted">
-              <p class="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Last month</p>
+              <p class="text-xs font-medium uppercase tracking-wide text-zinc-600 dark:text-zinc-400">Last month</p>
               <p class="mt-1 text-xl font-semibold tabular-nums text-zinc-700 dark:text-zinc-300">
                 {{ formatMoney(data.collections.previous_month, 'sales') }}
               </p>
               <p
                 v-if="data.collections.change_percent !== null"
                 class="mt-1 text-xs font-medium"
-                :class="data.collections.change_percent >= 0 ? 'text-emerald-700' : 'text-red-700'"
+                :class="data.collections.change_percent >= 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'"
               >
                 {{ data.collections.change_percent >= 0 ? '+' : '' }}{{ data.collections.change_percent }}% change
               </p>
